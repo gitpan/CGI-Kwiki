@@ -13,6 +13,7 @@ sub process {
     return $self->protected 
       unless $self->is_editable;
     $error_msg = '';
+    my $page_id = $self->cgi->page_id;
     $self->cgi->page_id_new($self->cgi->page_id_new || NEW_DEFAULT);
     my $page_id_new = $self->cgi->page_id_new;
     if (length $page_id_new and
@@ -34,13 +35,42 @@ sub process {
       if $self->cgi->button =~ /^save$/i and not $error_msg;
     return $self->preview 
       if $self->cgi->button =~ /^preview$/i;
-    my $wiki_text = $self->driver->database->load;
+    $self->driver->load_class('backup');
+    my $wiki_text = ($self->cgi->revision && 
+                     $self->cgi->revision ne $self->cgi->head_revision
+                    )
+        ? $self->driver->backup->fetch($page_id, $self->cgi->revision)
+        : $self->driver->database->load;
     $self->template->process(
         [qw(display_header edit_body basic_footer)],
         wiki_text => $wiki_text,
         error_msg => $error_msg,
+        history => $self->history,
         $self->privacy_checked,
     );
+}
+
+sub history {
+    my ($self) = @_;
+    return '' unless $self->driver->backup->has_history;
+    my $changes = $self->driver->backup->history;
+    return '' unless @$changes;
+    my $selected_revision = $self->cgi->revision || $changes->[0]->{revision};
+    my $head_revision = $changes->[0]->{revision};
+    my $history = <<END;
+<br>
+<input type="hidden" name="head_revision" value="$head_revision">
+<select name="revision" onchange="this.form.submit()">
+END
+    for my $change (@$changes) {
+        my $selected = $change->{revision} eq $selected_revision
+          ? ' selected' : '';
+        my ($revision, $date, $edit_by) =
+          @{$change}{qw(revision date edit_by)};
+        $history .= qq{<option value="$revision"$selected>} .
+                    qq{$revision ($date) $edit_by</option>\n};
+    }
+    $history .= qq{</select>\n};
 }
 
 sub privacy_checked {

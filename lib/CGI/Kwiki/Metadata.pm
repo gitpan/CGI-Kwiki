@@ -1,5 +1,5 @@
 package CGI::Kwiki::Metadata;
-$VERSION = '0.16';
+$VERSION = '0.17';
 use strict;
 use base 'CGI::Kwiki';
 
@@ -30,7 +30,7 @@ sub set {
     my $template = $self->metadata_template;
     print METADATA $self->render($template,
         edit_by => $self->edit_by,
-        edit_time => scalar(localtime),
+        edit_time => scalar(gmtime),
         @key_values,
     );
     close METADATA;

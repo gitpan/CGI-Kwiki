@@ -1,5 +1,5 @@
 package CGI::Kwiki::Formatter;
-$VERSION = '0.16';
+$VERSION = '0.17';
 use strict;
 use base 'CGI::Kwiki', 'CGI::Kwiki::Privacy';
 use CGI::Kwiki qw(:char_classes);
@@ -186,7 +186,7 @@ sub format_table {
 sub no_wiki_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{!([$UPPER](?=[$ALPHANUM]*[$UPPER])(?=[$ALPHANUM]*[$LOWER])[$ALPHANUM]+)},
+        qr{!([$UPPER](?=[$WORD]*[$UPPER])(?=[$WORD]*[$LOWER])[$WORD]+)},
         'no_wiki_link_format',
     );
 }
@@ -199,7 +199,7 @@ sub no_wiki_link_format {
 sub wiki_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{([$UPPER](?=[$ALPHANUM]*[$UPPER])(?=[$ALPHANUM]*[$LOWER])[$ALPHANUM]+)},
+        qr{([$UPPER](?=[$WORD]*[$UPPER])(?=[$WORD]*[$LOWER])[$WORD]+)},
         'wiki_link_format',
     );
 }

@@ -1,5 +1,5 @@
 package CGI::Kwiki::Pages;
-$VERSION = '0.16';
+$VERSION = '0.17';
 use strict;
 use base 'CGI::Kwiki';
 
@@ -18,7 +18,7 @@ sub create_file {
     (my $page_id = $file_path) =~ s!.*/!!;
     if ($self->driver->database->exists($page_id)) {
         my $metadata = $self->driver->metadata->get($page_id);
-        return unless $metadata->{edit_by} eq 'kwiki-install';
+        return unless ($metadata->{edit_by} || '') eq 'kwiki-install';
     }
     $self->driver->database->store($content, $page_id);
 }
@@ -79,6 +79,16 @@ CGI::Kwiki is simple yet powerful Wiki environment written in Perl as a CPAN mod
 *This is CGI::Kwiki Version [#.#]* 
 
 Changes in this release:
+  - RCS Support!!!
+  - Changed wiki_link regexps to include '_'
+  - Cleaned up html and css (AdamTrickett)
+  - Support template/local/ directory
+  - Add Login button to edit
+  - Added Blog to navbar
+  - Change localtime to gmtime
+  - Added time to RecentChanges
+
+Changes in this 0.16:
   - Support Page Privacy (Public, Protected, Private)
   - Support administrator login
   - KwikiBlog is a reality
@@ -121,10 +131,31 @@ Changes for version 0.14:
     TimSweetman.
   - Emacs artifact bug fix by HeikkiLehvaslaiho.
   - Cleaned up unneeded <p> tags. Reported by HolgerSchurig
+__KwikiBackup__
+Kwiki supports backing up of each page change, so that you can easily revert a page to an older version. Currently the only backup module is CGI::Kwiki::Backup::Rcs and it uses RCS to do the backups. RCS is generally found on almost all modern Unix systems.
+
+KwikiBackup support is not enabled by default. To enable it, add the following line to your config.yaml file:
+
+    backup_class: CGI::Kwiki::Backup::Rcs
 __KwikiBlog__
 KwikiBlog allows you to turn any wiki page into a blog page. You need to have KwikiPrivacy enabled, and you must be logged in as the administrator of the site.
 
 Click [here http:blog.cgi] to see if this site has KwikiBlog working.
+__KwikiCustomization__
+There are basically three levels of customization you can do with a kwiki site. They are discussed from easiest to hardest:
+
+^=== Config File Changes
+
+^=== Template/CSS Changes
+
+There are 2 directories in your kwiki installation that contain files that control the layout and appearance of your web pages:
+
+* [=template]
+* [=css]
+
+You can change the html and css files anyway that suits you. It is generally best to copy the modified files into [=template/local] and [=css/local]. This way your changes will not be overwritten if you later do a [=kwiki-install --upgrade].
+
+^=== Perl Code Changes
 __KwikiFeatures__
 The overall design goal of CGI::Kwiki is /simplicity/ and /extensibility/. 
 
@@ -288,7 +319,7 @@ MSG
 __KwikiHelpIndex__
 CGI::Kwiki is simple yet powerful Wiki environment written in Perl as a CPAN module distribribution. It was written by BrianIngerson.
 
-^=== Kwiki Basics ===
+^=== Kwiki Basics
 
 * KwikiInstallation
 * KwikiUpgrading
@@ -296,13 +327,18 @@ CGI::Kwiki is simple yet powerful Wiki environment written in Perl as a CPAN mod
 * KwikiFormattingRules
 * KwikiNavigation
 
-^=== CGI::Kwiki Development ===
+^=== CGI::Kwiki Development
 
 * KwikiAbout
 * KwikiTodo
 * KwikiKnownBugs
 
-^=== CGI::Kwiki Class/Module Documentation ===
+^=== Configuring a Kwiki Site
+
+* KwikiCustomization
+* KwikiBackup
+
+^=== CGI::Kwiki Class/Module Documentation
 
 * KwikiModule
 * KwikiDriverModule
@@ -379,10 +415,9 @@ Adjust to your needs.
 * KwikiUpgrading
 * KwikiModPerl
 * KwikiPrivacy
+* KwikiBackup
 __KwikiKnownBugs__
 See also: KwikiTodo
-
-* No backup system yet
 __KwikiLogoImage__
 A logo image is something like a "coat of arms" for your kwiki. It is very useful for identifying your kwiki, especially from other wiki sites.
 
@@ -549,17 +584,12 @@ CGI::Kwiki has a !PowerPoint-like slideshow built in. Give it a try.
 __KwikiTodo__
 See also: KwikiKnownBugs
 
-Address:
-* Strategy for handling edit collisions
-* RCS revision control
-* Public/Protected/Private security with basic authentication
-
 Add these features:
-
 * KwikiSisters
-* KwikiBlog
-* KwikiFit
-* KwikiPod
+* Page aliasing
+* Page renaming/refactoring
+* Revision Diff Display
+* Support [=javascript/local] and [=css/local]
 __KwikiUpgrading__
 ^== Upgrading a Kwiki Site ==
 

@@ -1,5 +1,5 @@
 package CGI::Kwiki::Database;
-$VERSION = '0.16';
+$VERSION = '0.17';
 use strict;
 use base 'CGI::Kwiki';
 use base 'CGI::Kwiki::Privacy';
@@ -42,6 +42,9 @@ sub store {
 
     $self->driver->load_class('metadata');
     $self->driver->metadata->set($page_id);
+
+    $self->driver->load_class('backup');
+    $self->driver->backup->commit($page_id);
 }
 
 sub delete {

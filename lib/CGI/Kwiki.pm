@@ -1,5 +1,5 @@
 package CGI::Kwiki;
-$VERSION = '0.16';
+$VERSION = '0.17';
 @EXPORT = qw(attribute);
 @CHAR_CLASSES = qw($ADMIN $UPPER $LOWER $ALPHANUM $WORD);
 @EXPORT_OK = (@CHAR_CLASSES);
@@ -37,6 +37,7 @@ sub classes {
         cookie
         database
         metadata
+        backup
         display
         edit
         formatter

@@ -1,20 +1,22 @@
 package CGI::Kwiki::Template;
-$VERSION = '0.16';
+$VERSION = '0.17';
 use strict;
 use base 'CGI::Kwiki', 'CGI::Kwiki::Privacy';
 
 CGI::Kwiki->rebuild if @ARGV and $ARGV[0] eq '--rebuild';
 
 sub directory { 'template' }
-sub suffix { '.html' }
+sub suffix { 
+    my ($self, $file) = @_;
+    $file =~ /README/ ? '' : '.html';
+}
 
 sub process {
     my ($self, $template, %vars) = @_;
     my @vars = (
         $self->config->all,
         $self->cgi->all,
-        script => $self->script,
-        is_admin => $self->is_admin,
+        $self->all,
         $self->display_vars,
         %vars,
     );
@@ -27,7 +29,9 @@ sub process {
 
 sub read_template {
     my ($self, $template) = @_;
-    my $template_file = "template/$template.html";
+    my $template_file = -f "template/local/$template.html"
+      ? "template/local/$template.html"
+      : "template/$template.html";
     open TEMPLATE, $template_file
       or die "Can't open $template_file for input\n";
     my $template_text = do {local $/; <TEMPLATE>};
@@ -75,6 +79,11 @@ See http://www.perl.com/perl/misc/Artistic.html
 
 =cut
 
+__README__
+Any templates that you modify should be copied to a "template/local/"
+directory first. This will keep them from being clobbered by upgrades to
+CGI::Kwiki. CGI::Kwiki automatically looks for templates in the
+template/local/ directory before searching the template/ directory.
 __basic_footer__
 </td>
 </tr>
@@ -82,7 +91,7 @@ __basic_footer__
 </body>
 </html>
 __blog_entry__
-<table width="100%" bgcolor="#c0c0c0">
+<table width="100%" bgcolor="#e0e0e0">
     <tr>
     <td><a href="blog.cgi?[% blog_id %]">[% blog_date %]</a></td>
     <td align="right"><a href="kwiki.cgi?[% page_id %]">[% page_id %]</a></td>
@@ -100,20 +109,21 @@ __blog_header__
 <html>
 <head>
 <title>[% title_prefix %]: Blog</title>
-<link rel="stylesheet" type="text/css" href="css/Blog.css">
+<link rel="stylesheet" type="text/css" href="css/Display.css">
 <!-- <script src="javascript/Blog.js"></script> -->
 </head>
-<body bgcolor=#FFFFFF link=#d06040 vlink=#806040>
-<table width=600 cellspacing=0 cellpadding=3>
+<body>
+<table border="0" width="600" cellspacing="0" cellpadding="3">
 <tr>
-<td align=center valign=top width=90>
+<td align="center" valign="top" width="90">
 [% image_html %]
 </td>
-<td width=510 valign=center>
+<td align="left" valign="center" width="510">
 <h1><a href="blog.cgi">Kwiki Blog</a></h1>
 </td>
-</tr><tr>
-<td align=center valign=top><font size=-1><br></font></td>
+</tr>
+<tr>
+<td>&nbsp;</td>
 <td>
 __display_body__
 <wiki>
@@ -147,16 +157,17 @@ __display_header__
 <head>
 <title>[% title_prefix %]: [% page_id %]</title>
 <link rel="stylesheet" type="text/css" href="css/Display.css">
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
 <!-- <script src="javascript/Display.js"></script> -->
 </head>
-<body bgcolor=#FFFFFF link=#d06040 vlink=#806040>
-<table width=600 cellspacing=0 cellpadding=3>
+<body>
+<table width="600" cellspacing="0" cellpadding="3">
 <tr>
-<td align=center valign=top width=90>
+<td align="center" valign="top" width="90">
 [% image_html %]
 [% sister_html %]
 </td>
-<td width=510 valign=center>
+<td align="left" valign="top" width="510">
 <h1>
 <a href="[% script %]?action=search&search=[% page_id %]">
 [% page_id %]
@@ -165,6 +176,9 @@ __display_header__
 <form method="post" action="[% script %]"
       enctype="application/x-www-form-urlencoded">
 <a href="[% script %]?[% top_page %]">[% top_page %]</a> | 
+[% IF has_privacy %]
+<a href="blog.cgi">Blog</a> |
+[% END %]
 <a href="[% script %]?RecentChanges">RecentChanges</a> | 
 <a href="[% script %]?action=prefs">Preferences</a> |
 <input type="text" name="search" size="15" value="Search"
@@ -173,7 +187,7 @@ __display_header__
 </form>
 </td>
 </tr><tr>
-<td align=center valign=top><font size=-1><br></font></td>
+<td>&nbsp;</td>
 <td>
 <hr>
 __edit_body__
@@ -181,31 +195,37 @@ __edit_body__
 <form method="post" 
       action="[% script %]" 
       enctype="application/x-www-form-urlencoded">
-<input type="hidden" name="action" value="edit"></input>
-<input type="hidden" name="page_id" value="[% page_id %]" />
-<input type="submit" name="button" value="SAVE" />
+<input type="hidden" name="action" value="edit">
+<input type="hidden" name="page_id" value="[% page_id %]">
+<input type="submit" name="button" value="SAVE">
 <input type="text" name="page_id_new" value="[% page_id_new %]" 
-       onfocus="this.value=''" />
-<input type="submit" name="button" value="PREVIEW" />
+       size="16" onfocus="this.value=''">
+<input type="submit" name="button" value="PREVIEW">
+<br>
+[% IF error_msg %]
 <br>
 [% error_msg %]
+[% END %]
 <br>
 [% IF is_admin %]
+<br>
 <input type="radio" name="privacy" value="public"[% public_checked %]>
 <b>Public</b>
 <input type="radio" name="privacy" value="protected"[% protected_checked %]>
 <b>Protected</b>
 <input type="radio" name="privacy" value="private"[% private_checked %]>
-<b>Private</b><br />
+<b>Private</b><br>
 [% END %]
 
 <textarea name="wiki_text" 
-          rows=25
-          cols=65 
+          rows="25"
+          cols="65" 
           style="width:100%" 
           wrap="virtual"
 >[% wiki_text %]</textarea>
-
+<br>
+[% history %]
+<br>
 [% IF is_admin %]
 <br>
 <input type="checkbox" name="blog"
@@ -216,6 +236,15 @@ __edit_body__
 <b>Permanently delete this page on SAVE</b><br>
 [% END %]
 </form>
+[% IF not_admin %]
+<form method="post" 
+      action="admin.cgi" 
+      enctype="application/x-www-form-urlencoded">
+<input type="hidden" name="action" value="edit">
+<input type="hidden" name="page_id" value="[% page_id %]">
+<input type="submit" name="button" value="LOGIN">
+</form>
+[% END %]
 __prefs_body__
 <form>
 <p>Your <a href="[% script %]?KwikiUserName">KwikiUserName</a> will be used
@@ -224,10 +253,10 @@ __prefs_body__
 </p>
 <font color="red">[% error_msg %]</font>
 UserName: &nbsp;
-<input type="text" name="user_name" value="[% user_name %]" size="20" /> 
+<input type="text" name="user_name" value="[% user_name %]" size="20"> 
 <br><br>
-<input type="submit" name="button" value="SAVE" />
-<input type="hidden" name="action" value="prefs" />
+<input type="submit" name="button" value="SAVE">
+<input type="hidden" name="action" value="prefs">
 </form>
 __preview_body__
 [% preview %]

@@ -2,6 +2,16 @@ package CGI::Kwiki::Privacy;
 $VERSION = '0.16';
 use strict;
 
+sub all {
+    my ($self) = @_;
+    (
+        has_privacy => $self->has_privacy,
+        is_admin => $self->is_admin,
+        not_admin => $self->not_admin,
+        script => $self->script,
+    );
+}
+
 sub is_readable {
     my ($self, $page_id) = @_;
     $page_id ||= $self->cgi->page_id;
@@ -28,6 +38,11 @@ sub is_editable {
 sub is_admin {
     my ($self) = @_;
     $CGI::Kwiki::ADMIN and $self->has_privacy;
+}
+
+sub not_admin {
+    my ($self) = @_;
+    not $CGI::Kwiki::ADMIN and $self->has_privacy;
 }
 
 sub is_public {

@@ -1,5 +1,16 @@
 # Change log for CGI::Kwiki
 
+version: 0.17
+date:    Mon Jun  9 23:48:01 PDT 2003
+changes:
+  - RCS Support!!!
+  - Changed wiki_link regexps to include '_'
+  - Cleaned up html and css (AdamTrickett)
+  - Support template/local/ directory
+  - Add Login button to edit
+  - Added Blog to navbar
+  - Change localtime to gmtime
+  - Added time to RecentChanges
 ---
 version: 0.16
 date:    Tue Jun  3 00:02:21 PDT 2003

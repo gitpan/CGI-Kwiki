@@ -45,15 +45,17 @@ sub changes {
           for @$pages;
         $pages = $older;
         if (@$recent) {
-            $html .= qq{<tr><td colspan="3"><h2>Changes in the last $range->[0]:</h2>\n};
+            $html .= qq{<tr><td colspan="5"><h2>Changes in the last $range->[0]:</h2>\n};
             for my $page_id (sort {-M $a <=> -M $b} 
                              map {$_->[0]} @$recent) {
                 $html .= "<tr>\n";
                 $page_id =~ s/.*[\/\\](.*)/$1/;
                 my $metadata = $self->driver->metadata->get($page_id);
                 my $edit_by = $metadata->{edit_by} || '&nbsp;';
-                $html .= qq{<td><a href="?$page_id">$page_id</a>\n};
-                $html .= qq{<td>&nbsp;<td>$edit_by\n};
+                my $edit_time = $metadata->{edit_time} || '&nbsp;';
+                $html .= qq{<td nowrap="1"><a href="?$page_id">$page_id</a>\n};
+                $html .= qq{<td>&nbsp;<td nowrap="1">$edit_by\n};
+                $html .= qq{<td>&nbsp;<td nowrap="1">$edit_time GMT\n};
             }
         }
     }
