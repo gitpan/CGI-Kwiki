@@ -1,7 +1,7 @@
 package CGI::Kwiki::Edit;
-$VERSION = '0.14';
+$VERSION = '0.16';
 use strict;
-use base 'CGI::Kwiki';
+use base 'CGI::Kwiki', 'CGI::Kwiki::Privacy';
 use CGI::Kwiki ':char_classes';
 
 use constant NEW_DEFAULT => '- New Page Name -';
@@ -10,32 +10,53 @@ my $error_msg;
 
 sub process {
     my ($self) = @_;
+    return $self->protected 
+      unless $self->is_editable;
     $error_msg = '';
     $self->cgi->page_id_new($self->cgi->page_id_new || NEW_DEFAULT);
     my $page_id_new = $self->cgi->page_id_new;
     if (length $page_id_new and
-        $page_id_new ne NEW_DEFAULT and
-        $page_id_new !~ /^[$ALPHANUM\:\-]+$/
+        $page_id_new ne NEW_DEFAULT
        ) {
-        $error_msg = 
-          qq{<font color="red">Invalid page name '$page_id_new'</font>};
+        if ($page_id_new !~ /^[$ALPHANUM\:\-]+$/) {
+            $error_msg = 
+              qq{<font color="red">Invalid page name '$page_id_new'</font>};
+        }
+        elsif ($self->driver->database->exists($page_id_new)) {
+            $error_msg =
+              qq{<font color="red">Page name '$page_id_new' already exists</font>};
+        }
+        else {
+            $self->cgi->page_id($page_id_new);
+        }
     }
-    else {
-        return $self->save 
-          if $self->cgi->button =~ /^save$/i;
-    }
+    return $self->save 
+      if $self->cgi->button =~ /^save$/i and not $error_msg;
     return $self->preview 
       if $self->cgi->button =~ /^preview$/i;
     my $wiki_text = $self->driver->database->load;
-    return
-      $self->template->process('display_header',
-          $self->template->display_vars,
-      ) .
-      $self->template->process('edit_body', 
-          wiki_text => $wiki_text,
-          error_msg => $error_msg,
-      ) .
-      $self->template->process('basic_footer');
+    $self->template->process(
+        [qw(display_header edit_body basic_footer)],
+        wiki_text => $wiki_text,
+        error_msg => $error_msg,
+        $self->privacy_checked,
+    );
+}
+
+sub privacy_checked {
+    my ($self) = @_;
+    return (
+        public_checked => $self->is_public ? ' checked' : '',
+        protected_checked => $self->is_protected ? ' checked' : '',
+        private_checked => $self->is_private ? ' checked' : '',
+    );
+}
+
+sub protected {
+    my ($self) = @_;
+    $self->template->process(
+        [qw(display_header protected_edit_body basic_footer)],
+    );
 }
 
 sub preview {
@@ -43,30 +64,37 @@ sub preview {
     $self->driver->load_class('formatter');
     my $wiki_text = $self->cgi->wiki_text;
     my $preview = $self->driver->formatter->process($wiki_text);
-    return
-      $self->template->process('display_header',
-          $self->template->display_vars,
-      ) .
-      $self->template->process('edit_body',
-          error_msg => $error_msg,
-      ) .
-      $self->template->process('preview_body',
-          preview => $preview,
-      ) .
-      $self->template->process('basic_footer');
+    $self->template->process(
+        [qw(display_header preview_body edit_body basic_footer)],
+        preview => $preview,
+        error_msg => $error_msg,
+        $self->privacy_checked,
+    );
 }
 
 sub save {
     my ($self) = @_;
-    my $page_id_new = $self->cgi->page_id_new;
-    if (length $page_id_new and
-        $page_id_new ne NEW_DEFAULT
-       ) {
-        $self->cgi->page_id($page_id_new);
-    }
     my $wiki_text = $self->cgi->wiki_text;
     $self->driver->database->store($wiki_text);
-    return { redirect => "index.cgi?" . $self->cgi->page_id };
+    if ($self->is_admin) {
+        my $privacy = $self->cgi->privacy || 'public';
+        $self->set_privacy($privacy);
+        $self->blog if $self->cgi->blog;
+        $self->delete if $self->cgi->delete;
+    }
+    return { redirect => $self->script . "?" . $self->cgi->page_id };
+}
+
+sub blog {
+    my ($self) = @_;
+    $self->driver->load_class('blog');
+    $self->driver->blog->create_entry;
+}
+
+sub delete {
+    my ($self) = @_;
+    $self->driver->database->delete;
+    $self->cgi->page_id('');
 }
 
 1;

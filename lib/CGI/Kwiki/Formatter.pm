@@ -1,7 +1,7 @@
 package CGI::Kwiki::Formatter;
-$VERSION = '0.15';
+$VERSION = '0.16';
 use strict;
-use base 'CGI::Kwiki';
+use base 'CGI::Kwiki', 'CGI::Kwiki::Privacy';
 use CGI::Kwiki qw(:char_classes);
 
 sub process_order {
@@ -15,7 +15,7 @@ sub process_order {
         named_http_link no_http_link http_link
         no_mailto_link mailto_link
         no_wiki_link force_wiki_link wiki_link
-        inline version
+        inline version negation
         bold italic underscore
     );
 }
@@ -207,16 +207,21 @@ sub wiki_link {
 sub force_wiki_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{\[([$ALPHANUM\-:]+)\]},
+        qr{(?<!\!)\[([$ALPHANUM\-:]+)\]},
         'wiki_link_format',
     );
 }
 
 sub wiki_link_format {
     my ($self, $text) = @_;
-    my $wiki_link = qq{<a href="index.cgi?$text">$text</a>};
-    unless ($self->driver->database->exists($text)) {
+    my $script = $self->script;
+    my $wiki_link = qq{<a href="$script?$text">$text</a>};
+    if (not $self->driver->database->exists($text)) {
         $wiki_link =~ s/<a/<a class="empty"/;
+    }
+    elsif (not $self->is_readable($text)) {
+        $wiki_link = 
+          qq{<a class="private" href="$script?KwikiPrivatePage">$text</a>};
     }
     return $wiki_link;
 }
@@ -245,7 +250,7 @@ sub http_link {
 
 sub http_link_format {
     my ($self, $text) = @_;
-    if ($text =~ /^http.*\.(jpg|gif|jpeg|png)$/) {
+    if ($text =~ /^http.*\.(?i:jpg|gif|jpeg|png)$/) {
         return $self->img_format($text);
     }
     else {
@@ -298,7 +303,7 @@ sub link_format {
 sub named_http_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{\[(.*?(?:https?|ftp|irc):\S.*?)\]},
+        qr{(?<!\!)\[(.*?(?:https?|ftp|irc):\S.*?)\]},
         'named_http_link_format',
     );
 }
@@ -313,14 +318,14 @@ sub named_http_link_format {
 
 sub version {
     my ($self, $text) = @_;
-    $text =~ s#\[\#\.\#\]#$CGI::Kwiki::VERSION#g;
+    $text =~ s#(?<!\!)\[\#\.\#\]#$CGI::Kwiki::VERSION#g;
     return $text;
 }
 
 sub inline {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{\[=(.*?)\]},
+        qr{(?<!\!)\[=(.*?)\]},
         'inline_format',
     );
 }
@@ -328,6 +333,12 @@ sub inline {
 sub inline_format {
     my ($self, $text) = @_;
     "<tt>$text</tt>";
+}
+
+sub negation {
+    my ($self, $text) = @_;
+    $text =~ s#\!(?=\[)##g;
+    return $text;
 }
 
 sub bold {

@@ -1,5 +1,5 @@
 package CGI::Kwiki::Scripts;
-$VERSION = '0.14';
+$VERSION = '0.16';
 use strict;
 use base 'CGI::Kwiki';
 
@@ -9,8 +9,16 @@ sub new {
     return $self;
 }
 
-sub directory { '.' }
+sub directory { #XXX
+    $_[1] =~ /(.*)\// ? $1 : '.';
+}
+
+sub name { #XXX
+    $_[1] =~ /.*\/(.*)/ ? $1 : $_[1];
+}
+
 sub suffix { '.cgi' }
+
 sub render_template {
     my ($self, $template) = @_;
     return $self->render($template,
@@ -19,7 +27,6 @@ sub render_template {
 }
 sub perms {
     my ($self, $file) = @_;
-    umask 0000;
     chmod(0755, $file) or die $!;
 }
 
@@ -29,7 +36,7 @@ __DATA__
 
 =head1 NAME 
 
-CGI::Kwiki::Config_yaml - Script container for CGI::Kwiki
+CGI::Kwiki::Scripts - Script container for CGI::Kwiki
 
 =head1 DESCRIPTION
 
@@ -53,5 +60,32 @@ See http://www.perl.com/perl/misc/Artistic.html
 __index__
 [% start_perl %] -w
 use lib '.';
+# use lib '../lib';
 use CGI::Kwiki;
 CGI::Kwiki::run_cgi();
+__pages__
+[% start_perl %] -w
+use lib '.';
+# use lib '../lib';
+use CGI::Kwiki::Pages;
+CGI::Kwiki::run_cgi();
+__admin__
+[% start_perl %] -w
+use lib '.';
+# use lib '../lib';
+use CGI::Kwiki;
+$CGI::Kwiki::ADMIN = 1;
+$CGI::Kwiki::ADMIN = 1;
+CGI::Kwiki::run_cgi();
+__kwiki__
+[% start_perl %] -w
+use lib '.';
+# use lib '../lib';
+use CGI::Kwiki;
+CGI::Kwiki::run_cgi();
+__blog__
+[% start_perl %] -w
+use lib '.';
+# use lib '../lib';
+use CGI::Kwiki::Blog;
+CGI::Kwiki::Blog::run_cgi();

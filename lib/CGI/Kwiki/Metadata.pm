@@ -1,10 +1,10 @@
 package CGI::Kwiki::Metadata;
-$VERSION = '0.14';
+$VERSION = '0.16';
 use strict;
 use base 'CGI::Kwiki';
 
 sub get {
-    my ($self, $page_id) = @_;
+    my ($self, $page_id, @keys) = @_;
     $page_id ||= $self->cgi->page_id;
     my $file_path = "metabase/metadata/$page_id";
     my $metadata = {};
@@ -18,11 +18,12 @@ sub get {
         }
         close METADATA;
     }
+    return @{$metadata}{@keys} if @keys;
     return $metadata;
 }
 
 sub set {
-    my ($self, $page_id) = @_;
+    my ($self, $page_id, @key_values) = @_;
     my $file_path = "metabase/metadata/$page_id";
     umask 0000;
     open METADATA, "> $file_path" or die $!;
@@ -30,6 +31,7 @@ sub set {
     print METADATA $self->render($template,
         edit_by => $self->edit_by,
         edit_time => scalar(localtime),
+        @key_values,
     );
     close METADATA;
 }

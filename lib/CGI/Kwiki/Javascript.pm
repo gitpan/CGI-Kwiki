@@ -89,6 +89,23 @@ function handleKey(e) {
 }
 
 document.onkeypress = handleKey
+__Edit__
+function setProtected(self) {
+    if (self.checked) {
+        var myForm = document.getElementsByTagName("form")[1]
+        myForm.getElementsByTagName("input")[6].checked = true
+    }
+}
+
+function setForDelete(self) {
+    if (self.checked) {
+        var myForm = document.getElementsByTagName("form")[1]
+        myForm.getElementsByTagName("input")[5].checked = false
+        myForm.getElementsByTagName("input")[6].checked = false
+        myForm.getElementsByTagName("input")[7].checked = false
+        myForm.getElementsByTagName("input")[8].checked = false
+    }
+}
 __SlideShow__
 function incrementSlide(i) {
     var myForm = document.getElementsByTagName("form")[0]

@@ -1,5 +1,5 @@
 package CGI::Kwiki::CGI;
-$VERSION = '0.15';
+$VERSION = '0.16';
 use strict;
 use base 'CGI::Kwiki';
 use CGI::Kwiki ':char_classes';
@@ -45,19 +45,29 @@ sub page_id {
     }
     return $self->{page_id} 
       if defined $self->{page_id};
-    my $page_id;
+    my $page_id = '';
     my $query_string = CGI::query_string();
     $query_string =~ s/%([0-9a-fA-F]{2})/pack("H*", $1)/ge;
     if ($query_string =~ /^keywords=([$ALPHANUM\-:]+)$/) {
         $page_id = $1;
     }
+    elsif ($self->action eq 'search') {
+        $page_id = $self->search eq '' ? 'SiteMap' : 'SearchResults';
+    }
     else {
         $page_id = CGI::param('page_id') || 
-                   $self->config->top_page;
+                   $self->config->top_page ||
+                   '';
     }
     $page_id = '' if $page_id =~ /[^$ALPHANUM\-\:]/;
-    return $page_id || $self->config->top_page;
-    return $page_id;
+    return $page_id || $self->config->top_page || '';
+}
+
+sub blog_id {
+    my ($self) = shift;
+    my $query_string = CGI::query_string();
+    my $blog_id = ($query_string =~ /^keywords=(\d{14})$/) ? $1 : '';
+    return $blog_id;
 }
 
 use vars qw($AUTOLOAD);

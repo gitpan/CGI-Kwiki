@@ -1,11 +1,13 @@
 package CGI::Kwiki::Pages;
-$VERSION = '0.15';
+$VERSION = '0.16';
 use strict;
 use base 'CGI::Kwiki';
 
 CGI::Kwiki->rebuild if @ARGV and $ARGV[0] eq '--rebuild';
 
-sub directory { 'database' }
+sub directory { 
+    return ('database', 0777);
+}
 
 sub data {
     join '', map { s/^\^=/=/; $_ } <DATA>;
@@ -51,7 +53,7 @@ See http://www.perl.com/perl/misc/Artistic.html
 __BrianIngerson__
 Brian "ingy" Ingerson is a Perl devotee and [CPAN http://search.cpan.org/author/INGY/] module author. His modules include CGI::Kwiki which is the Wiki software you are presently using.
 
-He has a dream to see the communities of all the /agile programming languages/ (Perl, Python, PHP, Ruby) working together. He is attemping to facilitate this in many ways including:
+He has a dream to see the communities of all the /agile programming languages/ (Perl, Python, PHP, Ruby) working together. He is attempting to facilitate this in many ways including:
 
 * [YAML http://www.yaml.org]
 * [FreePAN http://www.freepan.org]
@@ -77,6 +79,18 @@ CGI::Kwiki is simple yet powerful Wiki environment written in Perl as a CPAN mod
 *This is CGI::Kwiki Version [#.#]* 
 
 Changes in this release:
+  - Support Page Privacy (Public, Protected, Private)
+  - Support administrator login
+  - KwikiBlog is a reality
+  - Allow uppercase suffixes for urls (.GIF)
+  - Display 'Site Index' for empty search (JoergBraukhoff)
+  - Display 'Search' as the page_id on a search results page.
+  - Bang (!) before bracket ([) negates the usual formatting effect.
+  - Defeat browser caching (JoergBraukhoff)
+  - Support $ENV{REMOTE_USER} for htaccess (Pardus)
+
+
+Changes for version 0.15:
   - Support unicode character classes in page names
   - Search searches page names
   - Search is written in Perl now, instead of grep
@@ -108,14 +122,15 @@ Changes for version 0.14:
   - Emacs artifact bug fix by HeikkiLehvaslaiho.
   - Cleaned up unneeded <p> tags. Reported by HolgerSchurig
 __KwikiBlog__
-*Due next release or two*.
+KwikiBlog allows you to turn any wiki page into a blog page. You need to have KwikiPrivacy enabled, and you must be logged in as the administrator of the site.
 
-Certain Kwiki pages will be bloggable. This means they can also be protected from general update.
+Click [here http:blog.cgi] to see if this site has KwikiBlog working.
 __KwikiFeatures__
 The overall design goal of CGI::Kwiki is /simplicity/ and /extensibility/. 
 
 Even so, Kwiki will have some killer builtin features not available in most wikis:
 
+* KwikiPrivacy
 * KwikiSlideShow
 * KwikiBlog
 * KwikiSisters
@@ -363,6 +378,7 @@ Adjust to your needs.
 ^== See Also: ==
 * KwikiUpgrading
 * KwikiModPerl
+* KwikiPrivacy
 __KwikiKnownBugs__
 See also: KwikiTodo
 
@@ -419,6 +435,62 @@ The KwikiFormatterModule can be extended to create POD in addition to HTML. The 
 Theoretically, all the documentation and testing of Perl modules can be done inside a kwiki. BrianIngerson is starting to do this already.
 
 Stay tuned.
+__KwikiPrivacy__
+Kwiki allows the administrator of the website to set a privacy level on each page. There are 3 privacy levels:
+
+* Public - Anyone can read or edit the page.
+* Protected - Anyone can read, but only the administrator can edit.
+* Private - Only the administrator can read or edit.
+
+By default, all pages are public.
+----
+^=== Installation
+You need to turn on the privacy feature. It is not installed by default. To do so simply type this command:
+
+    kwiki-install --privacy
+
+inside your Kwiki installation directory.
+----
+^=== Server Configuration
+
+You'll also need to modify your web server configuration to make the program [=admin.cgi] protected by an authentication scheme. Here's an example of how you might do it with Apache:
+
+    Alias /kwiki/ /home/ingy/kwiki/
+    <Directory /home/ingy/kwiki/>
+        Order allow,deny
+        Allow from all
+        AllowOverride None
+        Options ExecCGI
+        AddHandler cgi-script .cgi
+        <Files admin.cgi>
+            Require user admin
+            AuthType Basic
+            AuthName Restricted
+            AuthUserFile /home/ingy/kwiki/passwd
+        </Files>
+    </Directory>
+
+You'll also need to set the administrative password. With Apache you can simply do this:
+
+    htpasswd -bc passwd admin foo
+
+which will set the [=admin] password to [=foo].
+
+----
+
+^=== Administration
+
+To login as the site administrator, go to [admin.cgi http:admin.cgi] instead of [index.cgi http:index.cgi]. If everything is set up correctly, you should be prompted for a password.
+
+Enter [=admin] for the username and [=foo] (or whatever password you selected) for the password. 
+
+After you've logged in, you should be able to set the privacy level on pages when you edit them.
+__KwikiPrivatePage__
+The link that you were following is a private page.
+
+Click [http:admin.cgi here] to login.
+
+See: KwikiPrivacy
 __KwikiSisters__
 *Due next release*.
 

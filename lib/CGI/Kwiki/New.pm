@@ -1,9 +1,10 @@
 package CGI::Kwiki::New;
-$VERSION = '0.15';
+$VERSION = '0.16';
 use strict;
 use Config;
 use File::Path;
 use CGI::Kwiki qw(attribute);
+use base 'CGI::Kwiki::Privacy';
 
 attribute 'driver';
 attribute 'options';
@@ -69,6 +70,7 @@ sub apply_options {
 
 sub install {
     my ($self) = @_;
+    $CGI::Kwiki::ADMIN = 1;
     $self->driver(CGI::Kwiki::load_driver());
     $CGI::Kwiki::user_name = 'kwiki-install';
     if ($self->options->{help}) {
@@ -157,21 +159,15 @@ sub privacy {
     $self->mkdir('metabase/public');
     $self->mkdir('metabase/private');
     $self->mkdir('metabase/protected');
+    $self->mkdir('metabase/blog');
     opendir DATABASE, "database" or die $!;
     while (my $page_id = readdir(DATABASE)) {
         next if $page_id =~ /^\./;
-        if (not -f 'metabase/public/$page_id' and
-            not -f 'metabase/private/$page_id' and
-            not -f 'metabase/protected/$page_id'
+        if ((not $self->is_public($page_id)) &&
+            (not $self->is_protected($page_id)) &&
+            (not $self->is_private($page_id))
            ) {
-            open PUBLIC, "> metabase/public/$page_id" or die $!;
-            print PUBLIC <<END;
-user: $CGI::Kwiki::user_name
-time: ${\ scalar localtime}
-END
-            close PUBLIC;
-            umask 0000;
-            chmod(0666, "metabase/public/$page_id");
+            $self->set_privacy('public', $page_id);
         }
     }
 }

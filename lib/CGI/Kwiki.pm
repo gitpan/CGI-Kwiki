@@ -1,13 +1,16 @@
 package CGI::Kwiki;
-$VERSION = '0.15';
+$VERSION = '0.16';
 @EXPORT = qw(attribute);
-@CHAR_CLASSES = qw($UPPER $LOWER $ALPHANUM $WORD);
+@CHAR_CLASSES = qw($ADMIN $UPPER $LOWER $ALPHANUM $WORD);
 @EXPORT_OK = (@CHAR_CLASSES);
 %EXPORT_TAGS = (char_classes => [@CHAR_CLASSES]);
 
 use strict;
 use base 'Exporter';
 use CGI qw(-no_debug);
+
+use vars qw($ADMIN);
+$ADMIN ||= 0;
 
 use vars qw($UPPER $LOWER $ALPHANUM $WORD);
 if ($] < 5.008) {
@@ -46,6 +49,7 @@ sub classes {
         javascript
         style
         scripts
+        blog
     )
 }
 
@@ -54,7 +58,9 @@ sub run_cgi {
     eval "use CGI::Carp qw(fatalsToBrowser)";
     die $@ if $@;
     my $driver = load_driver();
-    $CGI::Kwiki::user_name = CGI->remote_host();
+    $CGI::Kwiki::user_name = 
+      $ENV{REMOTE_USER} || 
+      CGI->remote_host();
     my $html = $driver->drive;
     if (ref $html) {
         print CGI::redirect($html->{redirect});
@@ -75,7 +81,9 @@ sub handler {
 
     my $driver = load_driver();
     $CGI::Kwiki::user_name = 
-      $r->get_remote_host || $r->connection->remote_ip;
+      $ENV{REMOTE_USER} ||
+      $r->get_remote_host || 
+      $r->connection->remote_ip;
     my $html = $driver->drive;
     if (ref $html) {
         $r->method('GET');
@@ -142,7 +150,8 @@ sub rebuild {
     $module =~ s/\//::/g;
     my $self = $module->new(load_driver);
     my $data = '';
-    for my $file (sort glob('mykwiki/' . $self->directory . '/*')) {
+    my ($directory) = $self->directory;
+    for my $file (sort glob("mykwiki/$directory/*")) {
         my $label = $file;
         $label =~ s/.*\///;
         $label =~ s/\.\w+$//;
@@ -171,21 +180,22 @@ sub rebuild {
 # Support for unpacking the DATA files attached to many CGI::Kwiki classes
 sub create_files {
     my ($self) = @_;
-    my $directory = $self->directory;
     umask 0000;
-    mkdir($directory, 0777)
-      if $directory and not -d $directory;
     my $package = ref($self);
-    my @files = split /^__([$WORD]+)__\n/m, $self->data;
+    my @files = split /^__([$WORD\/]+)__\n/m, $self->data;
     die $@ if $@;
     shift @files;
     my %files = @files;
     for my $file (keys %files) {
-        my $directory = $self->directory($file);
-        my $suffix = $self->suffix($file);
-        my $name = $self->name($file);
-        my $file_path = "$directory/$name$suffix";
-        $self->create_file($file_path, $self->render_template($files{$file}));
+        my ($directory, $perms) = $self->directory($file);
+        $perms ||= 0755;
+        if (not -d $directory) {
+            mkdir($directory, $perms);
+        }
+        $self->create_file(
+            "$directory/" .  $self->name($file) . $self->suffix($file),
+            $self->render_template($files{$file})
+        );
     }
 }
 
@@ -198,7 +208,7 @@ sub create_file {
     $self->perms($file_path);
 }
 
-sub directory { '' }
+sub directory { '.' }
 sub suffix { '' }
 sub name { $_[1] }
 sub render_template { $_[1] }
@@ -214,8 +224,20 @@ sub data {
 
 sub render {
     my ($self, $template, %v) = @_;
-    $template =~ 
-      s/(\[%\s+(\w+)\s+%\]\n?)/${\(defined $v{$2} ? $v{$2} : $1)}/g;
+    $template =~ s{\[%\s+IF\s+(\w+)\s+%\]
+                   (.*?)
+                   \[%\s+ELSE\s+%\]
+                   (.*?)
+                   \[%\s+END\s+%\]
+                  }
+                  {${\(defined $v{$1} && $v{$1} ? $2 : $3)}}gxs;
+    $template =~ s{\[%\s+IF\s+(\w+)\s+%\]
+                   (.*?)
+                   \[%\s+END\s+%\]
+                  }
+                  {${\(defined $v{$1} && $v{$1} ? $2 : '')}}gxs;
+    $template =~ s{(\[%\s+(\w+)\s+%\]\n?)}
+                  {${\(defined $v{$2} ? $v{$2} : $1)}}g;
     return $template;
 }
 

@@ -1,6 +1,19 @@
 # Change log for CGI::Kwiki
 
 ---
+version: 0.16
+date:    Tue Jun  3 00:02:21 PDT 2003
+changes: 
+  - Support Page Privacy (Public, Protected, Private)
+  - Support administrator login
+  - KwikiBlog is a reality
+  - Allow uppercase suffixes for urls (.GIF)
+  - Display 'Site Index' for empty search (JoergBraukhoff)
+  - Display 'Search' as the page_id on a search results page.
+  - Bang (!) before bracket ([) negates the usual formatting effect.
+  - Defeat browser caching (JoergBraukhoff)
+  - Support $ENV{REMOTE_USER} for htaccess (Pardus)
+---
 version: 0.15
 date:    Wed May 28 00:24:47 PDT 2003
 changes:

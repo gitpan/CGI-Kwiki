@@ -1,17 +1,14 @@
 package CGI::Kwiki::Search;
-$VERSION = '0.14';
+$VERSION = '0.16';
 use strict;
-use base 'CGI::Kwiki';
+use base 'CGI::Kwiki', 'CGI::Kwiki::Privacy';
 use CGI::Kwiki ':char_classes';
 
 sub process {
     my ($self) = @_;
     my $search = $self->cgi->page_id;
     return
-      $self->template->process(
-          'display_header',
-          $self->template->display_vars,
-      ) .
+      $self->template->process('display_header') .
       $self->search .
       $self->template->process('basic_footer');
 }
@@ -25,6 +22,7 @@ sub search {
     my @pages = $self->driver->database->pages;
     my @results;
     for my $page_id (@pages) {
+        next unless $self->is_readable($page_id);
         if ($page_id =~ m{$search}i) {
             push @results, $page_id;
             next;
@@ -34,8 +32,11 @@ sub search {
             push @results, $page_id;
         }
     }
-    my $result = '<h2>' . @results . 
-                 " pages found containing '$search':</h2>\n";
+    my $result = "<h3>" . @results . " pages found";
+    if (length $search) {
+        $result .= " containing '$search'";
+    }
+    $result .= ":</h3>\n";
     for my $page_id (sort @results) {
         $page_id =~ s/.*?([$WORD\-:]+)\n/$1/;
         $result .= qq{<a href="?$page_id">$page_id</a><br>\n};

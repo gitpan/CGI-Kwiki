@@ -1,7 +1,7 @@
 package CGI::Kwiki::Changes;
-$VERSION = '0.14';
+$VERSION = '0.16';
 use strict;
-use base 'CGI::Kwiki';
+use base 'CGI::Kwiki', 'CGI::Kwiki::Privacy';
 
 sub process {
     my ($self) = @_;
@@ -19,7 +19,13 @@ sub process {
 sub changes {
     my ($self) = @_;
     my $search = $self->cgi->search;
-    my $pages = [ map {[$_, -M $_]} glob "database/*" ];
+    my $pages = [ 
+        map {[$_, -M $_]} 
+        grep {
+            (my $page_id = $_) =~ s/.*[\/\\]//;
+            $self->is_readable($page_id);
+        } glob "database/*" 
+    ];
     my $html = qq{<table border="0">\n};
     for my $range
         (["hour", 1/24],
@@ -45,7 +51,7 @@ sub changes {
                 $html .= "<tr>\n";
                 $page_id =~ s/.*[\/\\](.*)/$1/;
                 my $metadata = $self->driver->metadata->get($page_id);
-                my $edit_by = $metadata->{edit_by} || '&nbsp';
+                my $edit_by = $metadata->{edit_by} || '&nbsp;';
                 $html .= qq{<td><a href="?$page_id">$page_id</a>\n};
                 $html .= qq{<td>&nbsp;<td>$edit_by\n};
             }

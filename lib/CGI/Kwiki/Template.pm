@@ -1,7 +1,7 @@
 package CGI::Kwiki::Template;
-$VERSION = '0.15';
+$VERSION = '0.16';
 use strict;
-use base 'CGI::Kwiki';
+use base 'CGI::Kwiki', 'CGI::Kwiki::Privacy';
 
 CGI::Kwiki->rebuild if @ARGV and $ARGV[0] eq '--rebuild';
 
@@ -9,24 +9,37 @@ sub directory { 'template' }
 sub suffix { '.html' }
 
 sub process {
-    my ($self, $template_file, %vars) = @_;
-    $template_file = "template/$template_file.html";
-    open TEMPLATE, $template_file
-      or die "Can't open $template_file for input\n";
-    my $template = do {local $/; <TEMPLATE>};
-    close TEMPLATE;
-    return $self->render($template,
+    my ($self, $template, %vars) = @_;
+    my @vars = (
         $self->config->all,
         $self->cgi->all,
+        script => $self->script,
+        is_admin => $self->is_admin,
+        $self->display_vars,
         %vars,
     );
+    my @templates = ref $template ? @$template : $template;
+    return join '', map 
+    {
+        $self->render($self->read_template($_), @vars)
+    } @templates;
+}
+
+sub read_template {
+    my ($self, $template) = @_;
+    my $template_file = "template/$template.html";
+    open TEMPLATE, $template_file
+      or die "Can't open $template_file for input\n";
+    my $template_text = do {local $/; <TEMPLATE>};
+    close TEMPLATE;
+    return $template_text;
 }
 
 sub display_vars {
     my ($self) = @_;
     my %vars;
     $vars{image_html} = 
-      '<h1><a href="index.cgi?KwikiLogoImage">???</a></h1>';
+      '<h1><a href="' . $self->script . '?KwikiLogoImage">???</a></h1>';
     if (defined $self->config->kwiki_image) {
         my $kwiki_image = $self->config->kwiki_image;
         $vars{image_html} = qq{<img src="$kwiki_image" border="0">};
@@ -63,8 +76,45 @@ See http://www.perl.com/perl/misc/Artistic.html
 =cut
 
 __basic_footer__
+</td>
+</tr>
+</table>
 </body>
 </html>
+__blog_entry__
+<table width="100%" bgcolor="#c0c0c0">
+    <tr>
+    <td><a href="blog.cgi?[% blog_id %]">[% blog_date %]</a></td>
+    <td align="right"><a href="kwiki.cgi?[% page_id %]">[% page_id %]</a></td>
+    </tr>
+</table>
+[% entry_text %]
+__blog_footer__
+</td>
+</tr>
+</table>
+</body>
+</html>
+__blog_header__
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html>
+<head>
+<title>[% title_prefix %]: Blog</title>
+<link rel="stylesheet" type="text/css" href="css/Blog.css">
+<!-- <script src="javascript/Blog.js"></script> -->
+</head>
+<body bgcolor=#FFFFFF link=#d06040 vlink=#806040>
+<table width=600 cellspacing=0 cellpadding=3>
+<tr>
+<td align=center valign=top width=90>
+[% image_html %]
+</td>
+<td width=510 valign=center>
+<h1><a href="blog.cgi">Kwiki Blog</a></h1>
+</td>
+</tr><tr>
+<td align=center valign=top><font size=-1><br></font></td>
+<td>
 __display_body__
 <wiki>
 [% display %]
@@ -73,8 +123,13 @@ __display_footer__
 <p>&nbsp;</td>
 </tr><tr>
 <td align=center>
+[% IF is_editable %]
 <form>
 <input type="submit" value="EDIT">
+[% ELSE %]
+<form action="admin.cgi">
+<input type="submit" value="LOGIN">
+[% END %]
 <input type="hidden" name="action" value="edit">
 <input type="hidden" name="page_id" value="[% page_id %]">
 </form>
@@ -103,15 +158,15 @@ __display_header__
 </td>
 <td width=510 valign=center>
 <h1>
-<a href="index.cgi?action=search&search=[% page_id %]">
+<a href="[% script %]?action=search&search=[% page_id %]">
 [% page_id %]
 </a>
 </h1>
-<form method="post" action="index.cgi"
+<form method="post" action="[% script %]"
       enctype="application/x-www-form-urlencoded">
-<a href="index.cgi?[% top_page %]">[% top_page %]</a> | 
-<a href="index.cgi?RecentChanges">RecentChanges</a> | 
-<a href="index.cgi?action=prefs">Preferences</a> |
+<a href="[% script %]?[% top_page %]">[% top_page %]</a> | 
+<a href="[% script %]?RecentChanges">RecentChanges</a> | 
+<a href="[% script %]?action=prefs">Preferences</a> |
 <input type="text" name="search" size="15" value="Search"
        onfocus="this.value=''" />
 <input type="hidden" name="action" value="search" />
@@ -122,37 +177,50 @@ __display_header__
 <td>
 <hr>
 __edit_body__
+<script src="javascript/Edit.js"></script>
 <form method="post" 
-      action="index.cgi" 
-      enctype="application/x-www-form-urlencoded"
->
+      action="[% script %]" 
+      enctype="application/x-www-form-urlencoded">
 <input type="hidden" name="action" value="edit"></input>
 <input type="hidden" name="page_id" value="[% page_id %]" />
+<input type="submit" name="button" value="SAVE" />
+<input type="text" name="page_id_new" value="[% page_id_new %]" 
+       onfocus="this.value=''" />
+<input type="submit" name="button" value="PREVIEW" />
+<br>
+[% error_msg %]
+<br>
+[% IF is_admin %]
+<input type="radio" name="privacy" value="public"[% public_checked %]>
+<b>Public</b>
+<input type="radio" name="privacy" value="protected"[% protected_checked %]>
+<b>Protected</b>
+<input type="radio" name="privacy" value="private"[% private_checked %]>
+<b>Private</b><br />
+[% END %]
 
 <textarea name="wiki_text" 
           rows=25
           cols=65 
           style="width:100%" 
-          wrap="virtual">[% wiki_text %]</textarea>
-<br><br>
-<table border="0">
-<tr><td align="right">
-<input type="submit" name="button" value="SAVE" />
-<td>
-<input type="text" name="page_id_new" value="[% page_id_new %]" 
-       onfocus="this.value=''" />
-<td>
-[% error_msg %]
-<tr><td align="right">
-<input type="submit" name="button" value="PREVIEW" />
-<td colspan="2">&nbsp;
-</table>
+          wrap="virtual"
+>[% wiki_text %]</textarea>
+
+[% IF is_admin %]
+<br>
+<input type="checkbox" name="blog"
+       onclick="setProtected(this)">
+<b>Blog this page on SAVE</b><br>
+<input type="checkbox" name="delete"
+       onclick="setForDelete(this)">
+<b>Permanently delete this page on SAVE</b><br>
+[% END %]
 </form>
 __prefs_body__
 <form>
-<p>Your <a href="index.cgi?KwikiUserName">KwikiUserName</a> will be used
+<p>Your <a href="[% script %]?KwikiUserName">KwikiUserName</a> will be used
    to indicate who changed a page. This can be viewed in <a
-   href="index.cgi?RecentChanges">RecentChanges</a>.
+   href="[% script %]?RecentChanges">RecentChanges</a>.
 </p>
 <font color="red">[% error_msg %]</font>
 UserName: &nbsp;
@@ -162,9 +230,10 @@ UserName: &nbsp;
 <input type="hidden" name="action" value="prefs" />
 </form>
 __preview_body__
-<hr>
-<h2>Preview:</h2>
 [% preview %]
+<hr>
+__protected_edit_body__
+<b>This is a protected page. Only the site administrator can edit it.</b>
 __slide_page__
 <html>
 <head>
@@ -184,7 +253,7 @@ __slide_page__
 <td width="5%">
 &nbsp;
 </table>
-<form method="POST" action="index.cgi">
+<form method="POST" action="[% script %]">
 <input type="hidden" name="slide_num" value="[% slide_num %]">
 <input type="hidden" name="action" value="slides">
 <input type="hidden" name="page_id" value="[% page_id %]">

@@ -1,23 +1,23 @@
 package CGI::Kwiki::Display;
-$VERSION = '0.14';
+$VERSION = '0.16';
 use strict;
-use base 'CGI::Kwiki';
+use base 'CGI::Kwiki', 'CGI::Kwiki::Privacy';
 
 sub process {
     my ($self) = @_;
     my $page_id = $self->cgi->page_id;
+    if (not $self->is_readable) {
+        return {redirect => $self->script . '?KwikiPrivatePage'};
+    }
     return $self->changes if $page_id eq 'RecentChanges';
     return $self->edit unless $self->driver->database->exists;
     my $wiki_text = $self->driver->database->load;
     my $formatted = $self->driver->formatter->process($wiki_text);
-    return
-      $self->template->process('display_header',
-          $self->template->display_vars,
-      ) .
-      $self->template->process('display_body',
-          display => $formatted
-      ) .
-      $self->template->process('display_footer');
+    $self->template->process(
+        [qw(display_header display_body display_footer)],
+        display => $formatted,
+        is_editable => $self->is_editable,
+    );
 }
 
 sub edit {

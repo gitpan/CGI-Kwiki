@@ -1,5 +1,5 @@
 package CGI::Kwiki::Cookie;
-$VERSION = '0.14';
+$VERSION = '0.16';
 use strict;
 use base 'CGI::Kwiki';
 use CGI::Kwiki;
@@ -27,6 +27,9 @@ sub create{
         -name => 'prefs', 
         -value => $self->prefs,
         -expires => '+5y',
+        -pragma => 'no-cache',
+        -cache_control => 'no-cache',
+        -last_modified => gmtime,
     );
 }
 
