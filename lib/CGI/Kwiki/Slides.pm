@@ -1,34 +1,9 @@
 package CGI::Kwiki::Slides;
-$VERSION = '0.12';
+$VERSION = '0.13';
 use strict;
 use base 'CGI::Kwiki';
 
 sub process {
-    my ($self) = @_;
-    return $self->cgi->size ? $self->open_window : $self->slide;
-}
-
-sub open_window {
-    my ($self) = @_;
-    my $page_id = $self->cgi->page_id;
-    my $size = $self->cgi->size;
-    my ($width, $height) = split 'x', $size;
-    <<END;
-<html>
-<head>
-<script>
-myArgs = "height=$height,width=$width,location=no,menubars=no,scrollbars=yes,toolbars=no,resizable=no,titlebar=no";
-myTarget = "SlideShow"
-newWindow = open("?action=slides&page_id=$page_id", "SlidesShow", myArgs);
-newWindow.focus();
-close();
-</script>
-</head>
-</html>
-END
-}
-
-sub slide {
     my ($self) = @_;
     my $page_id = $self->cgi->page_id;
     my $wiki_text = $self->driver->database->load($page_id);
@@ -54,7 +29,7 @@ function xxx(x) {
     alert("Value is ->" + x + "<-");
 }
 
-function changeSlide(i) {
+function incrementSlide(i) {
     var myForm = document.getElementsByTagName("form")[0];
     var myNum = myForm.getElementsByTagName("input")[0];
     i = i * 1;
@@ -70,36 +45,45 @@ function gotoSlide(i) {
     myForm.submit();
 }
 
+function nextSlide() {
+    incrementSlide(1);
+}
+
+function prevSlide() {
+    incrementSlide(-1);
+}
+
 function handleKey(e) {
-    switch(e.which) {
-        case 8:
-            changeSlide(-1);
-            break;
-        case 13:
-            changeSlide(1);
-            break;
-        case 32:
-            changeSlide(1);
-            break;
-        case 49:
-            gotoSlide(1);
-            break;
-        case 113:
-            window.close();
-            break;
-        default:
-            //xxx(e.which)
+    var key;
+    if (e == null) {
+        // IE
+        key = event.keyCode;
+    } 
+    else {
+        // Mozilla
+        if (e.altKey || e.ctrlKey) {
+            return true;
+        }
+        key = e.which;
+    }
+    switch(key) {
+        case 8: prevSlide(); break;
+        case 13: nextSlide(); break;
+        case 32: nextSlide(); break;
+        case 49: gotoSlide(1); break;
+        case 113: window.close(); break;
+        default: //xxx(e.which)
     }
 }
 
+document.onkeypress=handleKey;
+document.onclick=nextSlide;
+document.ondblclick=prevSlide;
+
 </script>
 </head>
-<body onload="document.body.focus()"
-      onclick="changeSlide(1)" 
-      ondblclick="changeSlide(-1)"
-      onkeypress="handleKey(event)"
->
-<table width="105%" border="0" cellpadding="5" cellspacing="0">
+<body>
+<table width="100%" border="0" cellpadding="5" cellspacing="0">
 <tr bgcolor="#E0E0FF"><td colspan="3" align="center" valign="middle">
 <h4>$title</h4>
 <tr>

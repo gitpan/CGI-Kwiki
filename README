@@ -29,6 +29,21 @@ DESCRIPTION
     featured, and includes support for html tables. Any behaviour of the
     kwiki can be customized, without much trouble.
 
+SPECIAL FEATURES
+    CGI::Kwiki will come with some fancy addons not found in most wiki
+    implementations. This comes with the promise that they will not
+    interfere with the sheer simplicity of the default kwiki interface.
+
+    Check back from time to time to see what hot features have been added.
+
+  Kwiki Slide Show
+    You can create an entire PowerPoint-like slideshow, in a single kwiki
+    page. There is Javascript magic for advancing slides, etc. See the
+    sample page KwikiSlideShow.
+
+  Kwiki Blog
+    Coming soon.
+
 EXTENDING
     CGI::Kwiki is completely Object Oriented. You can easily override every
     last behaviour by subclassing one of its class modules and overriding

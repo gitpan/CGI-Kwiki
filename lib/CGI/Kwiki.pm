@@ -1,5 +1,5 @@
 package CGI::Kwiki;
-$VERSION = '0.12';
+$VERSION = '0.13';
 @EXPORT = qw(attribute);
 use strict;
 use base 'Exporter';
@@ -87,6 +87,24 @@ ones that ship with Perl. It doesn't require a database backend,
 although it could be made to use one. The default kwiki behaviour is
 fairly full featured, and includes support for html tables. Any
 behaviour of the kwiki can be customized, without much trouble.
+
+=head1 SPECIAL FEATURES
+
+CGI::Kwiki will come with some fancy addons not found in most wiki
+implementations. This comes with the promise that they will not
+interfere with the sheer simplicity of the default kwiki interface.
+
+Check back from time to time to see what hot features have been added.
+
+=head2 Kwiki Slide Show
+
+You can create an entire PowerPoint-like slideshow, in a single kwiki
+page. There is Javascript magic for advancing slides, etc. See the
+sample page KwikiSlideShow.
+
+=head2 Kwiki Blog
+
+Coming soon. 
 
 =head1 EXTENDING
 

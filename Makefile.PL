@@ -11,5 +11,7 @@ install_script('kwiki-install');
 include_deps   ('Test::More', 5.004);
 build_requires ('Test::More', 0);
 
+clean_files('Pages');
+
 &Meta->write;
 &Makefile->write;

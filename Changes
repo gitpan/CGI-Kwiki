@@ -1,6 +1,11 @@
 # Change log for CGI::Kwiki
 
 ---
+version: 0.13
+date:    Tue May 13 11:48:40 PDT 2003
+changes:
+  - Improved javascript in slideshow
+---
 version: 0.12
 date:    Tue May 13 02:28:47 PDT 2003
 changes:

@@ -1,5 +1,5 @@
 package CGI::Kwiki::Formatter;
-$VERSION = '0.12';
+$VERSION = '0.13';
 use strict;
 use base 'CGI::Kwiki';
 use CGI();
@@ -95,13 +95,34 @@ sub SLIDESHOW_SELECTOR {
     my ($self) = @_;
     my $page_id = $self->cgi->page_id;
     my $html = <<END;
-<form method="GET" target="slides">
+<script>
+function startSlides() {
+    var myForm = document.getElementsByTagName("form")[1];
+    var mySize = myForm.getElementsByTagName("select")[0];
+    var myPage = myForm.getElementsByTagName("input")[2];
+    var width, height;
+    switch(mySize.value) {
+        case "640x480": width = "640"; height = "480"; break;
+        case "800x600": width = "800"; height = "600"; break;
+        case "1024x768": width = "1024"; height = "768"; break;
+        case "1280x1024": width = "1280"; height = "1024"; break;
+        case "1600x1200": width = "1600"; height = "1200"; break;
+        default: width = ""; height = ""
+    }
+    myUrl = "?action=slides&page_id=" + myPage.value;
+    myArgs = "height=" + height + ",width=" + width + ",location=no,menubars=no,scrollbars=yes,toolbars=no,resizable=no,titlebar=no";
+    myTarget = "SlideShow";
+    newWindow = open(myUrl, myTarget, myArgs);
+    newWindow.focus();
+}
+</script>
+<form>
 ${ \ CGI::popup_menu(
          -name => 'size',
          -values => [qw(640x480 800x600 1024x768 1280x1024 1600x1200)]
      )
  }
-<input type="submit" name="button" value="START">
+<input type="button" name="button" value="START" onclick="startSlides()">
 <input type="hidden" name="action" value="slides">
 <input type="hidden" name="page_id" value="$page_id">
 </form>

@@ -299,7 +299,7 @@ Sister Sites is a way of providing accidental linking between your Kwiki and oth
 
 See http://c2.com/cgi/wiki?AboutSisterSites for more info.
 __KwikiSlideShow__
-CGI::Kwiki has a Power Point like slideshow built in. Give it a try.
+CGI::Kwiki has a !PowerPoint-like slideshow built in. Give it a try.
 
 *Click Here to start the slideshow*:
 %%SLIDESHOW_SELECTOR%%
@@ -325,10 +325,11 @@ CGI::Kwiki has a Power Point like slideshow built in. Give it a try.
 * Very handy for adjusting on the fly
 ----
 == Bugs ==
-* Everything works in Mozilla
-* Other browsers do not seem to respond well to the onkeypress events.
+* Everything works in Mozilla and IE
+* Some browsers do not seem to respond well to the onkeypress events.
+** Often you can get around this by using backspace or delete to go back a slide.
 ----
-== Source Code ==
+== Displaying Source Code ==
 * Here is some Javascript code:
     function changeSlide(i) {
         var myForm = document.getElementsByTagName("form")[0];
