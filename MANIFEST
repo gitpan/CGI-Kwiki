@@ -29,5 +29,6 @@ lib/CGI/Kwiki/New.pm
 lib/CGI/Kwiki/Pages.pm
 lib/CGI/Kwiki/Prefs.pm
 lib/CGI/Kwiki/Search.pm
+lib/CGI/Kwiki/Slides.pm
 lib/CGI/Kwiki/Template.pm
 t/test.t

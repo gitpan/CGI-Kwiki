@@ -1,9 +1,8 @@
 package CGI::Kwiki::Driver;
-$VERSION = '0.11';
+$VERSION = '0.12';
 use strict;
 use CGI::Kwiki;
 use CGI;
-
 
 attribute 'config';
 attribute 'database';
@@ -18,15 +17,17 @@ attribute 'changes';
 attribute 'prefs';
 attribute 'preview';
 attribute 'pages';
+attribute 'slides';
 
 sub new {
     my ($class, $config) = @_;
     my $self = bless {}, $class;
     $self->config($config);
-    $self->load_class('database');
     $self->load_class('cgi');
-    $self->load_class('cookie');
     $self->load_class('template');
+    $self->load_class('cookie');
+    $self->load_class('database');
+    $self->load_class('formatter');
     return $self;
 }
 
@@ -34,13 +35,13 @@ sub drive {
     my ($self) = @_;
     my $action = $self->cgi->action;
     $self->load_class($action);
-    return $self->$action->process;
+    return $self->$action()->process;
 }
 
 sub load_class {
     my ($self, $class) = @_;
     my $class_class = $class . '_class';
-    my $class_name = $self->config->$class_class;
+    my $class_name = $self->config->$class_class();
     eval qq{ require $class_name }; die $@ if $@;
     $self->$class($class_name->new($self));
 }

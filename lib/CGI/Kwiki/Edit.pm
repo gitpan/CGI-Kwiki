@@ -1,48 +1,39 @@
 package CGI::Kwiki::Edit;
-$VERSION = '0.11';
+$VERSION = '0.12';
 use strict;
-use CGI::Kwiki;
-
-attribute 'driver';
-
-sub new {
-    my ($class, $driver) = @_;
-    my $self = bless {}, $class;
-    $self->driver($driver);
-    return $self;
-}
+use base 'CGI::Kwiki';
 
 sub process {
     my ($self) = @_;
     return $self->save 
-      if $self->driver->cgi->button =~ /^save$/i;
+      if $self->cgi->button =~ /^save$/i;
     return $self->preview 
-      if $self->driver->cgi->button =~ /^preview$/i;
-    my $page_id = $self->driver->cgi->page_id;
+      if $self->cgi->button =~ /^preview$/i;
+    my $page_id = $self->cgi->page_id;
     my $wiki_text = $self->driver->database->load;
     return
-      $self->driver->template->header .
-      $self->driver->template->edit_body($wiki_text) .
-      $self->driver->template->footer;
+      $self->template->header .
+      $self->template->edit_body($wiki_text) .
+      $self->template->footer;
 }
 
 sub preview {
     my ($self) = @_;
     $self->driver->load_class('formatter');
-    my $page_id = $self->driver->cgi->page_id;
-    my $wiki_text = $self->driver->cgi->wiki_text;
+    my $page_id = $self->cgi->page_id;
+    my $wiki_text = $self->cgi->wiki_text;
     my $preview = $self->driver->formatter->process($wiki_text);
     return
-      $self->driver->template->header .
-      $self->driver->template->edit_body($wiki_text) .
-      $self->driver->template->preview_body($preview) .
-      $self->driver->template->footer;
+      $self->template->header .
+      $self->template->edit_body($wiki_text) .
+      $self->template->preview_body($preview) .
+      $self->template->footer;
 }
 
 sub save {
     my ($self) = @_;
-    my $page_id = $self->driver->cgi->page_id;
-    my $wiki_text = $self->driver->cgi->wiki_text;
+    my $page_id = $self->cgi->page_id;
+    my $wiki_text = $self->cgi->wiki_text;
     $self->driver->database->store($page_id, $wiki_text);
 
     return { redirect => "?$page_id" };

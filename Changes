@@ -1,6 +1,22 @@
 # Change log for CGI::Kwiki
 
 ---
+version: 0.12
+date:    Tue May 13 02:28:47 PDT 2003
+changes:
+  - Refactored the Formatter heavily
+  - Added a slideshow
+  - Works with 5.005
+  - Username works in cookie
+  - Lots more default pages (but need even more)
+---
+version: 0.12
+date:    Sat May 10 01:00:26 PDT 2003
+changes:
+  - Refactor new() out of most classes
+  - Added cgi, template, and config attributes to most classes as helpers
+  - Got user_name into cookie
+---
 version: 0.11
 date:    Thu May  8 08:29:54 PDT 2003
 changes:

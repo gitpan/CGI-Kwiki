@@ -6,7 +6,7 @@ use File::Path;
 plan(tests => 10);
 
 my $cwd = cwd;
-ok(mkdir 't/kwiki');
+ok(mkdir 't/kwiki', 0777);
 ok(chdir 't/kwiki');
 ok(system("PERL5LIB=../../blib/lib;../../blib/script/kwiki-install") == 0);
 ok(-f 'config.yaml');

@@ -1,26 +1,17 @@
 package CGI::Kwiki::Database;
-$VERSION = '0.11';
+$VERSION = '0.12';
 use strict;
-use CGI::Kwiki;
-
-attribute 'driver';
-
-sub new {
-    my ($class, $driver) = @_;
-    my $self = bless {}, $class;
-    $self->driver($driver);
-    return $self;
-}
+use base 'CGI::Kwiki';
 
 sub exists {
     my ($self, $page_id) = @_;
-    $page_id ||= $self->driver->cgi->page_id;
+    $page_id ||= $self->cgi->page_id;
     return -f "database/$page_id";
 }
 
 sub load {
     my ($self, $page_id) = @_;
-    $page_id ||= $self->driver->cgi->page_id;
+    $page_id ||= $self->cgi->page_id;
     my $file_path = "database/$page_id";
     if (-f $file_path) {
         local($/, *WIKIPAGE);
@@ -34,19 +25,19 @@ sub load {
 
 sub store {
     my ($self, $page_id, $wiki_text) = @_;
-    $page_id ||= $self->driver->cgi->page_id;
-    $wiki_text ||= $self->driver->cgi->wiki_text;
     my $file_path = "database/$page_id";
-    open WIKIPAGE, '>', $file_path or die $!;
+    open WIKIPAGE, "> $file_path" or die $!;
     print WIKIPAGE $wiki_text;
     close WIKIPAGE;
 }
 
+sub store_meta {
+}
+
 sub store_new {
-    my ($self, $page_id) = @_;
-    $page_id ||= $self->driver->cgi->page_id;
+    my $self = shift;
+    my ($page_id) = @_;
     return 0 if -f "database/$page_id";
-    $self = shift;
     $self->store(@_);
 }
 

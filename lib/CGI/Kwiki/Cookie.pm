@@ -1,34 +1,35 @@
 package CGI::Kwiki::Cookie;
-$VERSION = '0.11';
+$VERSION = '0.12';
 use strict;
+use base 'CGI::Kwiki';
 use CGI::Kwiki;
-use CGI;
+use CGI();
 
-attribute 'driver';
-attribute 'cookie';
+attribute 'prefs';
 
 sub new {
-    my ($class, $driver) = @_;
-    my $self = bless {}, $class;
-    $self->driver($driver);
-    $self->cookie(CGI::cookie($self->cookie_name));
+    my $class = shift;
+    my $self = $class->SUPER::new(@_);
+    $self->prefs($self->fetch);
     return $self;
 }
 
 sub header {
     my ($self) = @_;
-    my $cookie = $self->create_cookie;
+    my $cookie = $self->create;
     return CGI::header(
         -cookie => $cookie,
     );
 }
 
-sub cookie_name {
-    'none';
+sub create{
+    my ($self) = @_;
+    return CGI::cookie('prefs', $self->prefs);
 }
 
-sub create_cookie {
-    return;
+sub fetch {
+    my ($self) = @_;
+    return { CGI::cookie('prefs') };
 }
 
 1;

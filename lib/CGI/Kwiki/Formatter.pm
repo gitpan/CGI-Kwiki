@@ -1,16 +1,8 @@
 package CGI::Kwiki::Formatter;
-$VERSION = '0.11';
+$VERSION = '0.12';
 use strict;
-use CGI::Kwiki;
-
-attribute 'driver';
-
-sub new {
-    my ($class, $driver) = @_;
-    my $self = bless {}, $class;
-    $self->driver($driver);
-    return $self;
-}
+use base 'CGI::Kwiki';
+use CGI();
 
 sub process_order {
     return qw(
@@ -55,6 +47,32 @@ sub dispatch {
     return $new_array;
 }
 
+sub combine_chunks {
+    my ($self, $chunk_array) = @_;
+    my $formatted_text = '';
+    for my $chunk (@$chunk_array) {
+        $formatted_text .= 
+          (ref $chunk eq 'ARRAY') ? $self->combine_chunks($chunk) :
+          (ref $chunk) ? $$chunk :
+          $chunk
+    }
+    return $formatted_text;
+}
+
+sub split_method {
+    my ($self, $text, $regexp, $method, $mutable) = @_;
+    $mutable ||= 0;
+    my $switch = 0;
+    return map {
+        if ($switch++ % 2) {
+            my $result = $self->$method($_);
+            $_ = $mutable ? $result : \ $result;
+        }
+        $_;
+    }
+    split $regexp, $text;
+}
+
 sub function {
     my ($self, $text) = @_;
     my $switch = 0;
@@ -71,6 +89,24 @@ sub function {
         @return
     }
     split m#(^%%[A-Z_]+\b.*?%%$)#m, $text;
+}
+
+sub SLIDESHOW_SELECTOR {
+    my ($self) = @_;
+    my $page_id = $self->cgi->page_id;
+    my $html = <<END;
+<form method="GET" target="slides">
+${ \ CGI::popup_menu(
+         -name => 'size',
+         -values => [qw(640x480 800x600 1024x768 1280x1024 1600x1200)]
+     )
+ }
+<input type="submit" name="button" value="START">
+<input type="hidden" name="action" value="slides">
+<input type="hidden" name="page_id" value="$page_id">
+</form>
+END
+    \ $html;
 }
 
 sub TRANSCLUDE_HTTP_BODY {
@@ -155,89 +191,95 @@ sub format_table {
 
 sub no_wiki_link {
     my ($self, $text) = @_;
-    my $switch = 0;
-    return map {
-        if ($switch++ % 2) {
-            s#!##;
-            $_ = \ do {my $x = $_};
-        }
-        $_;
-    }
-    split m#(![A-Z][a-z]+[A-Z]\w+)#, $text;
+    $self->split_method($text,
+        qr{(![A-Z][a-z]+[A-Z]\w+)},
+        'no_wiki_link_format',
+    );
+}
+
+sub no_wiki_link_format {
+    my ($self, $text) = @_;
+    $text =~ s#!##;
+    return $text;
 }
 
 sub wiki_link {
     my ($self, $text) = @_;
-    my $switch = 0;
-    return map {
-        if ($switch++ % 2) {
-            $_ = qq{<a href="?$_">$_</a>};
-            $_ = \ do {my $x = $_};
-        }
-        $_;
-    }
-    split m!([A-Z][a-z]+[A-Z]\w+)!, $text;
+    $self->split_method($text,
+        qr{([A-Z][a-z]+[A-Z]\w+)},
+        'wiki_link_format',
+    );
 }
 
 sub force_wiki_link {
     my ($self, $text) = @_;
-    my $switch = 0;
-    return map {
-        if ($switch++ % 2) {
-            $_ = qq{<a href="?$_">$_</a>};
-            $_ = \ do {my $x = $_};
-        }
-        $_;
-    }
-    split m!\[([\w-]+)\]!, $text;
+    $self->split_method($text,
+        qr{\[([\w-]+)\]},
+        'wiki_link_format',
+    );
+}
+
+sub wiki_link_format {
+    my ($self, $text) = @_;
+    return qq{<a href="?$text">$text</a>};
 }
 
 sub no_http_link {
     my ($self, $text) = @_;
-    my $switch = 0;
-    return map {
-        if ($switch++ % 2) {
-            s#!##;
-            $_ = \ do {my $x = $_};
-        }
-        $_;
-    }
-    split m#(!http://\S+?(?=[),.:;]?\s|$))#m, $text;
+    $self->split_method($text,
+        qr{(!http://\S+?(?=[),.:;]?\s|$))}m,
+        'no_http_link_format',
+    );
+}
+
+sub no_http_link_format {
+    my ($self, $text) = @_;
+    $text =~ s#!##;
+    return $text;
 }
 
 sub http_link {
     my ($self, $text) = @_;
-    my $switch = 0;
-    return map {
-        if ($switch++ % 2) {
-            if (/\.(jpg|gif|jpeg|png)/) {
-                $_ = qq{<img src="$_">};
-            }
-            else {
-                $_ = qq{<a href="$_">$_</a>};
-            }
-            $_ = \ do {my $x = $_};
-        }
-        $_;
+    $self->split_method($text,
+        qr{(http://\S+?(?=[),.:;]?\s|$))}m,
+        'http_link_format',
+    );
+}
+
+sub http_link_format {
+    my ($self, $text) = @_;
+    if ($text =~ /\.(jpg|gif|jpeg|png)/) {
+        return $self->img_format($text);
     }
-    split m!(http://\S+?(?=[),.:;]?\s|$))!m, $text;
+    else {
+        return $self->link_format($text, $text);
+    }
+}
+
+sub img_format {
+    my ($self, $url) = @_;
+    return qq{<img src="$url">};
+}
+
+sub link_format {
+    my ($self, $text, $url) = @_;
+    return qq{<a href="$url">$text</a>};
 }
 
 sub named_http_link {
     my ($self, $text) = @_;
-    my $switch = 0;
-    return map {
-        if ($switch++ % 2) {
-            my $link = '';
-            $link = $2 if s#^\[(.*)(http://\S+)(.*)\]$#$1$3#;
-            $link = $2 if s#^\[(.*)http:(\S+)(.*)\]$#$1$3#;
-            s#\s*(.*?)\s*#$1#;
-            $_ = qq{<a href="$link">$_</a>};
-            $_ = \ do {my $x = $_};
-        }
-        $_;
-    }
-    split m!(\[.*?http:\S.*?\])!, $text;
+    $self->split_method($text,
+        qr{(\[.*?http:\S.*?\])},
+        'named_http_link_format',
+    );
+}
+
+sub named_http_link_format {
+    my ($self, $text) = @_;
+    my $link = '';
+    $link = $2 if $text =~ s#^\[(.*)(http://\S+)(.*)\]$#$1$3#;
+    $link = $2 if $text =~ s#^\[(.*)http:(\S+)(.*)\]$#$1$3#;
+    return $self->link_format($text, $link);
 }
 
 sub bold {
@@ -260,15 +302,39 @@ sub underscore {
 
 sub code {
     my ($self, $text) = @_;
-    my $switch = 0;
-    return map {
-        if ($switch++ % 2) {
-            $_ = $self->preformat($_);
-            $_ = \ do {my $x = $_};
-        }
-        $_;
+    $self->split_method($text,
+        qr{(^ +[^ \n].*?\n)(?=[^ \n]|$)}ms,
+        'code_format',
+    );
+}
+
+sub code_format {
+    my ($self, $text) = @_;
+    $self->code_postformat($self->code_preformat($text));
+}
+
+sub code_preformat {
+    my ($self, $text) = @_;
+    my @indents = $text =~ /^( +)[^ \n]/gm;
+    my $indent = 10000;
+    for (@indents) {
+        $indent = length($_) if length($_) < $indent;
     }
-    split m!(^ +[^ \n].*?\n)(?=[^ \n]|$)!ms, $text;
+    $text =~ s/^ {$indent}//gm;
+    return $self->escape_html($text);
+}
+
+sub code_postformat {
+    my ($self, $text) = @_;
+    return "<blockquote><pre>$text</pre></blockquote>\n";
+}
+
+sub escape_html {
+    my ($self, $text) = @_;
+    $text =~ s/&/&amp;/g;
+    $text =~ s/</&lt;/g;
+    $text =~ s/>/&gt;/g;
+    $text;
 }
 
 sub lists {
@@ -304,11 +370,16 @@ sub lists {
                 my $tag = pop @tag_stack;
                 $text .= "</$tag>\n";
             }
-            $_ = $text;
+            $_ = $self->lists_format($text);
         }
         $_;
     }
     split m!(^[0\*]+ .*?\n)(?=(?:[^0\*]|$))!ms, $text;
+}
+
+sub lists_format {
+    my ($self, $text) = @_;
+    return $text;
 }
 
 sub paragraph {
@@ -316,108 +387,82 @@ sub paragraph {
     my $switch = 0;
     return map {
         unless ($switch++ % 2) {
-            $_ = "<p>\n$_\n</p>\n";
+            $_ = $self->paragraph_format($_);
         }
         $_;
     }
     split m!(\n\s*\n)!ms, $text;
 }
 
-sub preformat {
+sub paragraph_format {
     my ($self, $text) = @_;
-    my @indents = $text =~ /^( +)[^ \n]/gm;
-    my $indent = 10000;
-    for (@indents) {
-        $indent = length($_) if length($_) < $indent;
-    }
-    $text =~ s/^ {$indent}//gm;
-    $text = $self->escape_html($text);
-    return "<blockquote><pre>$text</pre></blockquote>\n";
-}
-
-sub escape_html {
-    my ($self, $text) = @_;
-    $text =~ s/&/&amp;/g;
-    $text =~ s/</&lt;/g;
-    $text =~ s/>/&gt;/g;
-    $text;
+    return "<p>\n$_\n</p>\n";
 }
 
 sub horizontal_line {
     my ($self, $text) = @_;
-    my $switch = 0;
-    return map {
-        if ($switch++ % 2) {
-            s!----+!<hr>!;
-            $_ = \ do {my $x = $_};
-        }
-        $_;
-    }    
-    split m!(^----+\n)!m, $text;
+    $self->split_method($text,
+        qr{(^----+\n)}m,
+        'horizontal_line_format',
+    );
+}
+
+sub horizontal_line_format {
+    my ($self, $text) = @_;
+    return "<hr>\n";
 }
 
 sub comment {
     my ($self, $text) = @_;
-    my $switch = 0;
-    return map {
-        if ($switch++ % 2) {
-            s/\# (.*)/<!-- $1 -->/;
-            $_ = \ do {my $x = $_};
-        }
-        $_;
-    }    
-    split m!(^\# .*\n)!m, $text;
+    $self->split_method($text,
+        qr{(^\# .*\n)}m,
+        'comment_line_format',
+    );
+}
+
+sub comment_line_format {
+    my ($self, $text) = @_;
+    $text =~ s/\# (.*)/<!-- $1 -->/;
+    return $text;
 }
 
 sub header_1 {
     my ($self, $text) = @_;
-    my $switch = 0;
-    return map {
-        if ($switch++ % 2) {
-            s!= (.*) =!<h1>$1</h1>!;
-            $_ = \ do {my $x = $_};
-        }
-        $_;
-    }    
-    split m!(^= (?:.*) =\n)!m, $text;
+    $self->split_method($text,
+        qr{^= (.*) =\n}m,
+        'header_1_format',
+    );
+}
+
+sub header_1_format {
+    my ($self, $text) = @_;
+    return "<h1>$text</h1>\n";
 }
 
 sub header_2 {
     my ($self, $text) = @_;
-    my $switch = 0;
-    return map {
-        if ($switch++ % 2) {
-            s!== (.*) ==!<h2>$1</h2>!;
-            $_ = \ do {my $x = $_};
-        }
-        $_;
-    }    
-    split m!(^== (?:.*) ==\n)!m, $text;
+    $self->split_method($text,
+        qr{^== (.*) ==\n}m,
+        'header_2_format',
+    );
+}
+
+sub header_2_format {
+    my ($self, $text) = @_;
+    return "<h2>$text</h2>\n";
 }
 
 sub header_3 {
     my ($self, $text) = @_;
-    my $switch = 0;
-    return map {
-        if ($switch++ % 2) {
-            s!=== (.*) ===!<h3>$1</h3>!;
-            $_ = \ do {my $x = $_};
-        }
-        $_;
-    }    
-    split m!(^=== (?:.*) ===\n)!m, $text;
+    $self->split_method($text,
+        qr{^=== (.*) ===\n}m,
+        'header_3_format',
+    );
 }
 
-sub combine_chunks {
-    my ($self, $chunk_array) = @_;
-    my $formatted_text = '';
-    for my $chunk (@$chunk_array) {
-        $formatted_text .= 
-          (ref $chunk eq 'ARRAY') ? $self->combine_chunks($chunk) :
-          (ref $chunk) ? $$chunk :
-          $chunk
-    }
-    return $formatted_text;
+sub header_3_format {
+    my ($self, $text) = @_;
+    return "<h3>$text</h3>\n";
 }
 
 1;

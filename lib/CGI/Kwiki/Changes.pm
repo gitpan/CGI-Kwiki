@@ -1,29 +1,20 @@
 package CGI::Kwiki::Changes;
 $VERSION = '0.10';
 use strict;
-use CGI::Kwiki;
-
-attribute 'driver';
-
-sub new {
-    my ($class, $driver) = @_;
-    my $self = bless {}, $class;
-    $self->driver($driver);
-    return $self;
-}
+use base 'CGI::Kwiki';
 
 sub process {
     my ($self) = @_;
-    my $search = $self->driver->cgi->page_id;
+    my $search = $self->cgi->page_id;
     return
-      $self->driver->template->header .
-      $self->driver->template->changes_body($self->changes) .
-      $self->driver->template->footer;
+      $self->template->header .
+      $self->changes .
+      $self->template->footer;
 }
 
 sub changes {
     my ($self) = @_;
-    my $search = $self->driver->cgi->search;
+    my $search = $self->cgi->search;
     my $pages = [ map {[$_, -M $_]} glob "database/*" ];
     my $html = '';
     for my $range

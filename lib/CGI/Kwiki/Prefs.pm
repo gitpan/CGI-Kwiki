@@ -1,24 +1,49 @@
 package CGI::Kwiki::Prefs;
 $VERSION = '0.01';
 use strict;
+use base 'CGI::Kwiki';
 use CGI::Kwiki;
 
-attribute 'driver';
-
-sub new {
-    my ($class, $driver) = @_;
-    my $self = bless {}, $class;
-    $self->driver($driver);
-    return $self;
-}
+attribute 'user_name';
+attribute 'error_msg';
 
 sub process {
     my ($self) = @_;
-    $self->driver->cgi->page_id('Preferences');
+    $self->error_msg('');
+    $self->save 
+      if $self->cgi->button =~ /^save$/i;
+    $self->cgi->page_id('Preferences');
     return
-      $self->driver->template->header .
-      $self->driver->template->prefs_body .
-      $self->driver->template->footer;
+      $self->template->header .
+      $self->body .
+      $self->template->footer;
+}
+
+sub save {
+    my ($self) = @_;
+    my $user_name = $self->cgi->user_name;
+    unless ($user_name and $self->driver->database->exists($user_name)) {
+        $self->error_msg('<font color="red">User name must have a valid wiki page</font>');
+        return;
+    }
+    $self->driver->cookie->prefs({user_name => $user_name});
+}
+    
+sub body {
+    my ($self) = @_;
+    my $user_name = $self->driver->cookie->prefs->{user_name};
+    my $error_msg = $self->error_msg;
+<<END;
+$error_msg
+<form>
+<br>
+UserName: &nbsp;
+<input type="text" name="user_name" value="$user_name" size="20" /> 
+<br><br>
+<input type="submit" name="button" value="SAVE" />
+<input type="hidden" name="action" value="prefs" />
+</form>
+END
 }
 
 1;

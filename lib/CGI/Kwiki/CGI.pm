@@ -1,17 +1,7 @@
 package CGI::Kwiki::CGI;
-$VERSION = '0.11';
+$VERSION = '0.12';
 use strict;
-use CGI::Kwiki;
-
-attribute 'driver';
-
-sub new {
-    require CGI;
-    my ($class, $driver) = @_;
-    my $self = bless {}, $class;
-    $self->driver($driver);
-    return $self;
-}
+use base 'CGI::Kwiki';
 
 sub button {
     my ($self) = shift(@_);
@@ -48,6 +38,15 @@ sub action {
     return CGI::param('action') || 'display';
 }
 
+sub user_name {
+    my ($self) = shift(@_);
+    if (@_) {
+        $self->{user_name} = shift(@_);
+        return $self;
+    }
+    return CGI::param('user_name') || '';
+}
+
 sub page_id {
     my ($self) = shift(@_);
     if (@_) {
@@ -63,9 +62,21 @@ sub page_id {
     }
     else {
         $page_id = CGI::param('page_id') || 
-                   $self->driver->config->top_page;
+                   $self->config->top_page;
     }
     return $page_id;
+}
+
+use vars qw($AUTOLOAD);
+sub AUTOLOAD {
+    my $param = $AUTOLOAD;
+    $param =~ s/.*://;
+    my ($self) = shift(@_);
+    if (@_) {
+        $self->{$param} = shift(@_);
+        return $self;
+    }
+    return CGI::param($param) || '';
 }
 
 1;

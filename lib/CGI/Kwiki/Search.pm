@@ -1,29 +1,20 @@
 package CGI::Kwiki::Search;
 $VERSION = '0.01';
 use strict;
-use CGI::Kwiki;
-
-attribute 'driver';
-
-sub new {
-    my ($class, $driver) = @_;
-    my $self = bless {}, $class;
-    $self->driver($driver);
-    return $self;
-}
+use base 'CGI::Kwiki';
 
 sub process {
     my ($self) = @_;
-    my $search = $self->driver->cgi->page_id;
+    my $search = $self->cgi->page_id;
     return
-      $self->driver->template->header .
-      $self->driver->template->search_body($self->search) .
-      $self->driver->template->footer;
+      $self->template->header .
+      $self->search .
+      $self->template->footer;
 }
 
 sub search {
     my ($self) = @_;
-    my $search = $self->driver->cgi->search;
+    my $search = $self->cgi->search;
     # Detaint query string
     $search =~ s/[^\w\ \-\.\^\$\*\|]//g;
     my @results = `grep -lir '$search' database`;

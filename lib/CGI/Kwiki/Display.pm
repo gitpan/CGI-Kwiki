@@ -1,29 +1,19 @@
 package CGI::Kwiki::Display;
-$VERSION = '0.11';
+$VERSION = '0.12';
 use strict;
-use CGI::Kwiki;
-
-attribute 'driver';
-
-sub new {
-    my ($class, $driver) = @_;
-    my $self = bless {}, $class;
-    $self->driver($driver);
-    $self->driver->load_class('formatter');
-    return $self;
-}
+use base 'CGI::Kwiki';
 
 sub process {
     my ($self) = @_;
-    my $page_id = $self->driver->cgi->page_id;
+    my $page_id = $self->cgi->page_id;
     return $self->changes if $page_id eq 'RecentChanges';
     return $self->edit unless $self->driver->database->exists;
     my $wiki_text = $self->driver->database->load;
     my $formatted = $self->driver->formatter->process($wiki_text);
     return
-      $self->driver->template->header .
-      $self->driver->template->display_body($formatted) .
-      $self->driver->template->display_footer;
+      $self->template->header .
+      $self->template->display_body($formatted) .
+      $self->template->display_footer;
 }
 
 sub edit {

@@ -1,5 +1,5 @@
 package CGI::Kwiki::ConfigParse_yaml;
-$VERSION = '0.11';
+$VERSION = '0.12';
 use strict;
 
 sub new {

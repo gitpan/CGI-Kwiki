@@ -1,9 +1,9 @@
 package CGI::Kwiki;
-$VERSION = '0.11';
+$VERSION = '0.12';
 @EXPORT = qw(attribute);
 use strict;
 use base 'Exporter';
-use CGI::Carp qw(fatalsToBrowser warningsToBrowser);
+use CGI::Carp qw(fatalsToBrowser);
 
 sub attribute {
     my ($attribute) = @_;
@@ -16,6 +16,21 @@ sub attribute {
           $self->{$attribute} = shift;
           return $self;
       };
+}
+
+attribute 'driver';
+attribute 'template';
+attribute 'config';
+attribute 'cgi';
+
+sub new {
+    my ($class, $driver) = @_;
+    my $self = bless {}, $class;
+    $self->driver($driver);
+    $self->template($driver->template);
+    $self->config($driver->config);
+    $self->cgi($driver->cgi);
+    return $self;
 }
 
 sub run_cgi {

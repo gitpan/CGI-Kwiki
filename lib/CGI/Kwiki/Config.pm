@@ -1,5 +1,5 @@
 package CGI::Kwiki::Config;
-$VERSION = '0.11';
+$VERSION = '0.12';
 use strict;
 use CGI::Kwiki;
 
@@ -17,6 +17,7 @@ attribute 'search_class';
 attribute 'changes_class';
 attribute 'prefs_class';
 attribute 'pages_class';
+attribute 'slides_class';
 
 attribute 'top_page';
 attribute 'kwiki_image';
