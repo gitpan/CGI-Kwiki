@@ -1,5 +1,5 @@
 package CGI::Kwiki::Config_yaml;
-$VERSION = '0.17';
+$VERSION = '0.18';
 use strict;
 use base 'CGI::Kwiki';
 
@@ -17,11 +17,11 @@ sub render_template {
     for my $class (grep {not /^(new|config_)/} CGI::Kwiki::classes()) {
         my $Class = $class;
         $Class =~ s/(.)/\u$1/;
-        $Class = uc($class) if $class eq 'cgi';
+        $Class = uc($class) if $class eq 'cgi' or $class eq 'i18n';
         $config_classes .= 
           sprintf "%-18s CGI::Kwiki::%s\n", "${class}_class:", $Class;
     }
-    return $self->render($template,
+    return $self->driver->template->render($template,
         date => scalar(gmtime),
         config_classes => $config_classes,
         class => ref($self),
@@ -41,12 +41,40 @@ sub parse {
     my $hash = {};
     for (split /\n/, $yaml) {
         next if /\s*#/;
-        next unless /: /;
+        next unless /:( |$)/;
         next unless /^\S/;
-        next unless /(.*?)\s*:\s+(.*?)\s*$/;
+        next unless /(.*?)\s*:\s+(.*?)\s*$/ or
+                    /(.*?):()$/;
         $hash->{$1} = $2;
     }
+    if ($hash->{encoding} and lc($hash->{encoding}) =~ /\b(?:auto|utf-?8)\b/ and $] >= 5.008) {
+        utf8::decode($hash->{$_}) for keys %$hash;
+    }
     return $hash;
+}
+
+sub merge_config {
+    my ($self) = @_;
+    my $old_config = $self->parse_file('config.yaml');
+    my $data = $self->data;
+    $data =~ /^__config__\n(.*)/ms if defined $data;
+    my $template = $1 || '';
+    my $new_config = $self->parse($self->render_template($template));
+    my $diff_config;
+    for my $key (keys %$new_config) {
+        $diff_config->{$key} = $new_config->{$key}
+          unless exists $old_config->{$key};
+    }
+    return unless keys %$diff_config;
+    open CONFIG, ">>config.yaml"
+      or die "Can't open config.yaml for append:\n$!";
+    binmode(CONFIG, ':utf8') if $self->use_utf8;
+    print CONFIG "\n# Added the following options upgrading to version $CGI::Kwiki::VERSION\n";
+    for my $key (keys %$diff_config) {
+        print CONFIG "${key}: $diff_config->{$key}\n";
+    }
+    close CONFIG;
+    return 1;
 }
 
 1;
@@ -88,6 +116,22 @@ __config__
 # whatever methods you deem necessary.
 [% config_classes %]
 
+###############################################################################
+# Any of these values can be used in the Kwiki templates. You can make up your
+# own template variables too.
 top_page:      HomePage
-kwiki_image:
+changes_page:  RecentChanges
+preferences_page:  Preferences
+blog_page:     Blog
+
+# "auto" means UTF-8 for Perl 5.8+, and ISO-8859-1 for earlier perls
+encoding:      auto
+# this only has effect on Perl 5.8+ with encoding set to auto or UTF-8
+page_language: auto
+
+slogan:        A Quickie Wiki that's not too Tricky
 title_prefix:  My Kwiki
+stylesheet:    Klassik.css
+
+kwiki_image:
+favicon:

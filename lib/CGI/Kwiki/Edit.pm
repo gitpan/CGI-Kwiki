@@ -1,59 +1,43 @@
 package CGI::Kwiki::Edit;
-$VERSION = '0.16';
+$VERSION = '0.18';
 use strict;
 use base 'CGI::Kwiki', 'CGI::Kwiki::Privacy';
 use CGI::Kwiki ':char_classes';
 
-use constant NEW_DEFAULT => '- New Page Name -';
-
-my $error_msg;
+use constant NEW_DEFAULT => 'New Page Name';
 
 sub process {
     my ($self) = @_;
     return $self->protected 
       unless $self->is_editable;
-    $error_msg = '';
+    my $error_msg = $self->check_new_name;
     my $page_id = $self->cgi->page_id;
-    $self->cgi->page_id_new($self->cgi->page_id_new || NEW_DEFAULT);
-    my $page_id_new = $self->cgi->page_id_new;
-    if (length $page_id_new and
-        $page_id_new ne NEW_DEFAULT
-       ) {
-        if ($page_id_new !~ /^[$ALPHANUM\:\-]+$/) {
-            $error_msg = 
-              qq{<font color="red">Invalid page name '$page_id_new'</font>};
-        }
-        elsif ($self->driver->database->exists($page_id_new)) {
-            $error_msg =
-              qq{<font color="red">Page name '$page_id_new' already exists</font>};
-        }
-        else {
-            $self->cgi->page_id($page_id_new);
-        }
-    }
+    $self->driver->load_class('backup');
     return $self->save 
       if $self->cgi->button =~ /^save$/i and not $error_msg;
     return $self->preview 
       if $self->cgi->button =~ /^preview$/i;
-    $self->driver->load_class('backup');
     my $wiki_text = ($self->cgi->revision && 
                      $self->cgi->revision ne $self->cgi->head_revision
                     )
-        ? $self->driver->backup->fetch($page_id, $self->cgi->revision)
-        : $self->driver->database->load;
+        ? $self->backup->fetch($page_id, $self->cgi->revision)
+        : ($self->database->load($page_id) ||
+           ($self->loc("Describe the new page here.") . "\n")
+          );
     $self->template->process(
         [qw(display_header edit_body basic_footer)],
         wiki_text => $wiki_text,
         error_msg => $error_msg,
         history => $self->history,
+        version_mark => $self->backup->version_mark,
         $self->privacy_checked,
     );
 }
 
 sub history {
     my ($self) = @_;
-    return '' unless $self->driver->backup->has_history;
-    my $changes = $self->driver->backup->history;
+    return '' unless $self->backup->has_history;
+    my $changes = $self->backup->history;
     return '' unless @$changes;
     my $selected_revision = $self->cgi->revision || $changes->[0]->{revision};
     my $head_revision = $changes->[0]->{revision};
@@ -93,26 +77,64 @@ sub preview {
     my ($self) = @_;
     $self->driver->load_class('formatter');
     my $wiki_text = $self->cgi->wiki_text;
-    my $preview = $self->driver->formatter->process($wiki_text);
+    my $preview = $self->formatter->process($wiki_text);
     $self->template->process(
         [qw(display_header preview_body edit_body basic_footer)],
         preview => $preview,
-        error_msg => $error_msg,
         $self->privacy_checked,
     );
 }
 
 sub save {
     my ($self) = @_;
+    my $page_id = $self->cgi->page_id;
+    $self->database->lock($page_id);
+    my $conflict = $self->backup->conflict;
+    my $return;
     my $wiki_text = $self->cgi->wiki_text;
-    $self->driver->database->store($wiki_text);
-    if ($self->is_admin) {
-        my $privacy = $self->cgi->privacy || 'public';
-        $self->set_privacy($privacy);
-        $self->blog if $self->cgi->blog;
-        $self->delete if $self->cgi->delete;
+    if ($conflict) {
+        $return = $self->template->process(
+            [qw(display_header edit_body basic_footer)],
+            wiki_text => $wiki_text,
+            version_mark => $self->cgi->version_mark,
+            $self->privacy_checked,
+            %$conflict, 
+        );
     }
-    return { redirect => $self->script . "?" . $self->cgi->page_id };
+    else {
+        $self->database->store($wiki_text, $self->cgi->page_id);
+        if ($self->is_admin) {
+            my $privacy = $self->cgi->privacy || 'public';
+            $self->set_privacy($privacy);
+            $self->blog if $self->cgi->blog;
+            $self->delete if $self->cgi->delete;
+        }
+        $return = { redirect => $self->script . "?" . $self->escape($self->cgi->page_id) };
+    }
+    $self->database->unlock($page_id);
+    return $return;
+}
+
+sub check_new_name {
+    my ($self) = @_;
+    my $page_id = $self->cgi->page_id;
+    $self->cgi->page_id_new($self->cgi->page_id_new || $self->loc(NEW_DEFAULT));
+    my $page_id_new = $self->cgi->page_id_new;
+    my $error_msg = '';
+    if (length $page_id_new and
+        $page_id_new ne $self->loc(NEW_DEFAULT)
+       ) {
+        if ($page_id_new !~ /^[$ALPHANUM\:\-]+$/) {
+            $error_msg = $self->loc("Invalid page name '%1'", $page_id_new);
+        }
+        elsif ($self->database->exists($page_id_new)) {
+            $error_msg = $self->loc("Page name '%1' already exists", $page_id_new);
+        }
+        else {
+            $self->cgi->page_id($page_id_new);
+        }
+    }
+    return $error_msg;
 }
 
 sub blog {
@@ -123,8 +145,11 @@ sub blog {
 
 sub delete {
     my ($self) = @_;
-    $self->driver->database->delete;
+    my $page_id = $self->cgi->page_id;
+    $self->database->lock($page_id);
+    $self->database->delete($self->cgi->page_id);
     $self->cgi->page_id('');
+    $self->database->unlock($page_id);
 }
 
 1;

@@ -1,5 +1,18 @@
 # Change log for CGI::Kwiki
 
+version: 0.18
+date:    Sun Sep  7 11:14:56 PDT 2003
+changes:
+  - Changed template/local to local/template
+  - Handle edit collisions
+  - Merge config file settings on --upgrade
+  - Move LOGIN button to prefs
+  - Initial plugin framework
+  - Diff plugin
+  - i18n support - Autrijus Tang
+  - FastCGI support - Autrijus Tang
+  - Schwern's patches - Michael Schwern
+
 version: 0.17
 date:    Mon Jun  9 23:48:01 PDT 2003
 changes:

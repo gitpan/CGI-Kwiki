@@ -18,6 +18,7 @@ sub header {
     my $cookie = $self->create;
     return CGI::header(
         -cookie => $cookie,
+        -charset => $self->config->encoding,
     );
 }
 
@@ -25,7 +26,7 @@ sub create{
     my ($self) = @_;
     return CGI::cookie(
         -name => 'prefs', 
-        -value => $self->prefs,
+        -value => { map $self->escape($_), %{$self->prefs} },
         -expires => '+5y',
         -pragma => 'no-cache',
         -cache_control => 'no-cache',
@@ -35,7 +36,7 @@ sub create{
 
 sub fetch {
     my ($self) = @_;
-    return { CGI::cookie('prefs') };
+    return { map $self->unescape($_), CGI::cookie('prefs') };
 }
 
 1;

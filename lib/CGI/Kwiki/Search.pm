@@ -1,5 +1,5 @@
 package CGI::Kwiki::Search;
-$VERSION = '0.16';
+$VERSION = '0.18';
 use strict;
 use base 'CGI::Kwiki', 'CGI::Kwiki::Privacy';
 use CGI::Kwiki ':char_classes';
@@ -15,11 +15,11 @@ sub process {
 
 sub search {
     my ($self) = @_;
-    my $database = $self->driver->database;
+    my $database = $self->database;
     my $search = $self->cgi->search;
     # Detaint query string
     $search =~ s/[^$WORD\ \-\.\^\$\*\|\:]//g;
-    my @pages = $self->driver->database->pages;
+    my @pages = $database->pages;
     my @results;
     for my $page_id (@pages) {
         next unless $self->is_readable($page_id);
@@ -32,14 +32,18 @@ sub search {
             push @results, $page_id;
         }
     }
-    my $result = "<h3>" . @results . " pages found";
+    my $result = "<h3>";
     if (length $search) {
-        $result .= " containing '$search'";
+        $result .= $self->loc("%1 pages found containing '%2'", scalar @results, $search);
+    }
+    else {
+        $result .= $self->loc("%1 pages found", scalar @results);
     }
     $result .= ":</h3>\n";
+    my $script = $self->script;
     for my $page_id (sort @results) {
         $page_id =~ s/.*?([$WORD\-:]+)\n/$1/;
-        $result .= qq{<a href="?$page_id">$page_id</a><br>\n};
+        $result .= qq{<a href="$script?$page_id">$page_id</a><br>\n};
     }
     return $result;
 }

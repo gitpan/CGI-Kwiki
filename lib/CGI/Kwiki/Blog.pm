@@ -1,5 +1,5 @@
 package CGI::Kwiki::Blog;
-$VERSION = '0.16';
+$VERSION = '0.18';
 use strict;
 use base 'CGI::Kwiki';
 
@@ -9,13 +9,17 @@ sub run_cgi {
     eval "use CGI::Carp qw(fatalsToBrowser)";
     die $@ if $@;
     my $driver = CGI::Kwiki::load_driver();
-    my $self = __PACKAGE__->new($driver);
-    my $html = $self->process;
-    if (ref $html) {
-        print CGI::redirect($html->{redirect});
-    }
-    else {
-        print $driver->cookie->header, $html;
+
+    my $cgi_class = (eval { require CGI::Fast; 1 } ? 'CGI::Fast' : 'CGI');
+    while (my $cgi = $cgi_class->new) {
+        my $self = __PACKAGE__->new($driver);
+        my $html = $self->process;
+        if (ref $html) {
+            print CGI::redirect($html->{redirect});
+        } else {
+            print $driver->cookie->header, $html;
+        }
+	last if $cgi_class eq 'CGI';
     }
 }
 
@@ -39,8 +43,8 @@ sub process {
     for my $blog_id (@blog_ids) {
         my ($page_id, $date) = 
           $self->get_blog_info($blog_id);
-        my $wiki_text = $self->driver->database->load($page_id);
-        my $formatted = $self->driver->formatter->process($wiki_text);
+        my $wiki_text = $self->database->load($page_id);
+        my $formatted = $self->formatter->process($wiki_text);
         $output .= $self->template->process('blog_entry',
             entry_text => $formatted,
             blog_date => $date,
@@ -56,6 +60,7 @@ sub get_blog_info {
     my $blog_path = "metabase/blog/$blog_id";
     open BLOG, $blog_path
       or die "Can't open $blog_path for input:\n$!";
+    binmode(BLOG, ':utf8') if $self->use_utf8;
     my $blog_text = do {local $/; <BLOG>};
     close BLOG;
     my $page_id = ($blog_text =~ /^page_id:\s+(.*)/m) ? $1 : '';
@@ -75,6 +80,7 @@ sub create_entry {
     my $date = gmtime;
     open BLOG, "> $blog_path"
       or die "Can't open $blog_path for output:\n$!";
+    binmode(BLOG, ':utf8') if $self->use_utf8;
     print BLOG <<END;
 page_id: $page_id
 date: $date

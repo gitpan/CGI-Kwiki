@@ -46,19 +46,19 @@ function gotoPage(page_id) {
 }
 
 function editPage() {
-    var myForm = document.getElementsByTagName("form")[1]
+    var myForm = document.getElementsByTagName("form")[2]
     myForm.submit()
 }
 
 function savePage() {
-    var myForm = document.getElementsByTagName("form")[1]
+    var myForm = document.getElementsByTagName("form")[2]
     var mySave = myForm.getElementsByTagName("input")[2]
     mySave.checked = true
     myForm.submit()
 }
 
 function previewPage() {
-    var myForm = document.getElementsByTagName("form")[1]
+    var myForm = document.getElementsByTagName("form")[2]
     var myPreview = myForm.getElementsByTagName("input")[3]
     myPreview.focus()
     myForm.submit()
@@ -92,14 +92,14 @@ document.onkeypress = handleKey
 __Edit__
 function setProtected(self) {
     if (self.checked) {
-        var myForm = document.getElementsByTagName("form")[1]
+        var myForm = document.getElementsByTagName("form")[2]
         myForm.getElementsByTagName("input")[6].checked = true
     }
 }
 
 function setForDelete(self) {
     if (self.checked) {
-        var myForm = document.getElementsByTagName("form")[1]
+        var myForm = document.getElementsByTagName("form")[2]
         myForm.getElementsByTagName("input")[5].checked = false
         myForm.getElementsByTagName("input")[6].checked = false
         myForm.getElementsByTagName("input")[7].checked = false
@@ -107,28 +107,26 @@ function setForDelete(self) {
     }
 }
 __SlideShow__
-function incrementSlide(i) {
+function setControl(c) {
     var myForm = document.getElementsByTagName("form")[0]
     var myNum = myForm.getElementsByTagName("input")[0]
-    i = i * 1
-    myVal = myNum.value * 1
-    myNum.value = myVal + i
+    myNum.value = c
     myForm.submit()
 }
 
 function gotoSlide(i) {
     var myForm = document.getElementsByTagName("form")[0]
-    var myNum = myForm.getElementsByTagName("input")[0]
+    var myNum = myForm.getElementsByTagName("input")[1]
     myNum.value = i
     myForm.submit()
 }
 
 function nextSlide() {
-    incrementSlide(1)
+    setControl('advance')
 }
 
 function prevSlide() {
-    incrementSlide(-1)
+    setControl('goback')
 }
 
 function handleKey(e) {
@@ -172,23 +170,23 @@ document.ondblclick = prevSlide
 
 __SlideStart__
 function startSlides() {
-    var myForm = document.getElementsByTagName("form")[1];
-    var mySize = myForm.getElementsByTagName("select")[0];
-    var myPage = myForm.getElementsByTagName("input")[2];
-    var width = "";
-    var height = "";
-    var fullscreen = "no";
+    var myForm = document.getElementsByTagName("form")[2]
+    var mySize = myForm.getElementsByTagName("select")[0]
+    var myPage = myForm.getElementsByTagName("input")[2]
+    var width = ""
+    var height = ""
+    var fullscreen = "no"
     switch(mySize.value) {
-        case "640x480": width = "640"; height = "480"; break;
-        case "800x600": width = "800"; height = "600"; break;
-        case "1024x768": width = "1024"; height = "768"; break;
-        case "1280x1024": width = "1280"; height = "1024"; break;
-        case "1600x1200": width = "1600"; height = "1200"; break;
-        case "fullscreen": fullscreen = "yes"; break;
+        case "640x480": width = "640"; height = "480"; break
+        case "800x600": width = "800"; height = "600"; break
+        case "1024x768": width = "1024"; height = "768"; break
+        case "1280x1024": width = "1280"; height = "1024"; break
+        case "1600x1200": width = "1600"; height = "1200"; break
+        case "fullscreen": fullscreen = "yes"; break
     }
-    myUrl = "index.cgi?action=slides&page_id=" + myPage.value;
-    myArgs = "fullscreen=" + fullscreen + ",height=" + height + ",width=" + width + ",location=no,menubar=no,scrollbars=yes,toolbar=no,resizable=no,titlebar=no";
-    myTarget = "SlideShow";
-    newWindow = open(myUrl, myTarget, myArgs);
-    newWindow.focus();
+    myUrl = "index.cgi?action=slides&page_id=" + myPage.value
+    myArgs = "fullscreen=" + fullscreen + ",height=" + height + ",width=" + width + ",location=no,menubar=no,scrollbars=yes,toolbar=no,resizable=no,titlebar=no"
+    myTarget = "SlideShow"
+    newWindow = open(myUrl, myTarget, myArgs)
+    newWindow.focus()
 }

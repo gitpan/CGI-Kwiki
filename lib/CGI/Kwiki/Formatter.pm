@@ -1,13 +1,12 @@
 package CGI::Kwiki::Formatter;
-$VERSION = '0.17';
+$VERSION = '0.18';
 use strict;
 use base 'CGI::Kwiki', 'CGI::Kwiki::Privacy';
 use CGI::Kwiki qw(:char_classes);
 
 sub process_order {
     return qw(
-        function
-        table code 
+        table code function 
         header_1 header_2 header_3 header_4 header_5 header_6 
         escape_html
         lists comment horizontal_line
@@ -20,7 +19,9 @@ sub process_order {
     );
 }
 
+my $slide_num;
 sub process {
+    $slide_num = 0;
     my ($self, $wiki_text) = @_;
     my $array = [];
     push @$array, $wiki_text;
@@ -68,10 +69,23 @@ sub split_method {
     map {$i++ % 2 ? \ $self->$method($_) : $_} split $regexp, $text;
 }
 
+sub user_functions {
+    qw(
+        SLIDESHOW_SELECTOR
+        total_bullets
+    );
+}
+
+sub isa_function {
+    my ($self, $function) = @_;
+    defined { map { ($_, 1) } $self->user_functions }->{$function} and
+    $self->can($function)
+}
+
 sub function {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{\[\&([A-Z_]+\b.*?)\]},
+        qr{\[\&(\w+\b.*?)\]},
         'function_format',
     );
 }
@@ -79,24 +93,31 @@ sub function {
 sub function_format {
     my ($self, $text) = @_;
     my ($method, @args) = split;
-    $self->can($method) 
+    $self->isa_function($method) 
       ? $self->$method(@args)
-      : $text;
+      : "<!-- Function not supported here: $text -->\n";
+}
+
+sub total_bullets {
+    my ($self) = @_;
+    scalar(() = $self->database->load($self->cgi->page_id) =~ /^\* /gm);
 }
 
 sub SLIDESHOW_SELECTOR {
     my ($self) = @_;
+    $slide_num = 1;
     my $page_id = $self->cgi->page_id;
+    my $start = $self->loc('start');
     my $html = <<END;
 <script src="javascript/SlideStart.js"></script>
 <form>
 ${ \ CGI::popup_menu(
          -name => 'size',
-         -values => [qw(640x480 800x600 1024x768 1280x1024 1600x1200 fullscreen)]
+         -values => [qw(640x480 800x600 1024x768 1280x1024 1600x1200), $self->loc('fullscreen')]
      )
  }
-<input type="button" name="button" value="START" onclick="startSlides()">
-<input type="hidden" name="action" value="slides">
+<input type="button" name="button" value="$start" onclick="startSlides()">
+<input type="hidden" name="action" value="START">
 <input type="hidden" name="page_id" value="$page_id">
 </form>
 END
@@ -186,7 +207,7 @@ sub format_table {
 sub no_wiki_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{!([$UPPER](?=[$WORD]*[$UPPER])(?=[$WORD]*[$LOWER])[$WORD]+)},
+        qr{!([$UPPER](?=[$WIKIWORD]*[$UPPER])(?=[$WIKIWORD]*[$LOWER])[$WIKIWORD]+)},
         'no_wiki_link_format',
     );
 }
@@ -199,7 +220,7 @@ sub no_wiki_link_format {
 sub wiki_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{([$UPPER](?=[$WORD]*[$UPPER])(?=[$WORD]*[$LOWER])[$WORD]+)},
+        qr{([$UPPER](?=[$WIKIWORD]*[$UPPER])(?=[$WIKIWORD]*[$LOWER])[$WIKIWORD]+)},
         'wiki_link_format',
     );
 }
@@ -215,13 +236,15 @@ sub force_wiki_link {
 sub wiki_link_format {
     my ($self, $text) = @_;
     my $script = $self->script;
-    my $wiki_link = qq{<a href="$script?$text">$text</a>};
-    if (not $self->driver->database->exists($text)) {
+    my $url = $self->escape($text);
+    my $wiki_link = qq{<a href="$script?$url">$text</a>};
+    if (not $self->database->exists($text)) {
         $wiki_link =~ s/<a/<a class="empty"/;
     }
     elsif (not $self->is_readable($text)) {
+	$url = $self->escape($self->loc("KwikiPrivatePage"));
         $wiki_link = 
-          qq{<a class="private" href="$script?KwikiPrivatePage">$text</a>};
+          qq{<a class="private" href="$script?$url">$text</a>};
     }
     return $wiki_link;
 }
@@ -296,21 +319,21 @@ sub link_format {
     $text =~ s/(^\s*|\s+(?=\s)|\s$)//g;
     my $url = $text;
     $url = $1 if $text =~ s/(.*?) +//;
-    $url =~ s/https?:(?!\/\/)//;
+    $url =~ s/^http:(?!=\/\/)//; # relative links
     return qq{<a href="$url">$text</a>};
 }
 
 sub named_http_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{(?<!\!)\[(.*?(?:https?|ftp|irc):\S.*?)\]},
+        qr{(?<!\!)\[([^\[\]]*?(?:https?|ftp|irc):\S.*?)\]},
         'named_http_link_format',
     );
 }
 
 sub named_http_link_format {
     my ($self, $text) = @_;
-    if ($text =~ m#(.*)(?:https?|ftp|irc):(\S+)(.*)#) {
+    if ($text =~ m#(.*)((?:https?|ftp|irc):\S+)(.*)#) {
         $text = "$2 $1$3";
     }
     return $self->link_format($text);
@@ -325,14 +348,15 @@ sub version {
 sub inline {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{(?<!\!)\[=(.*?)\]},
+        qr{(?<!\!)\[=(.*?)(?<!\\)\]},
         'inline_format',
     );
 }
 
 sub inline_format {
     my ($self, $text) = @_;
-    "<tt>$text</tt>";
+    $text =~ s{\\ ([ \[\] ]) }{$1}xg;   # Translate \] escapes to ]
+    "<code>$text</code>";
 }
 
 sub negation {
@@ -343,19 +367,19 @@ sub negation {
 
 sub bold {
     my ($self, $text) = @_;
-    $text =~ s#(?<![$WORD])\*(\S.*?\S)\*(?![$WORD])#<b>$1</b>#g;
+    $text =~ s#(?<![$WORD])\*(\S.*?\S|\S)\*(?![$WORD])#<b>$1</b>#g;
     return $text;
 }
 
 sub italic {
     my ($self, $text) = @_;
-    $text =~ s#(?<![$WORD<])/(\S.*?\S)/(?![$WORD])#<em>$1</em>#g;
+    $text =~ s#(?<![$WORD<])/(\S.*?\S|\S)/(?![$WORD])#<em>$1</em>#g;
     return $text;
 }
 
 sub underscore {
     my ($self, $text) = @_;
-    $text =~ s#(?<![$WORD])_(\S.*?\S)_(?![$WORD])#<u>$1</u>#g;
+    $text =~ s#(?<![$WORD])_(\S.*?\S|\S)_(?![$WORD])#<u>$1</u>#g;
     return $text;
 }
 
@@ -465,8 +489,15 @@ sub horizontal_line {
 }
 
 sub horizontal_line_format {
-    my ($self, $text) = @_;
-    return "<hr>\n";
+    my ($self) = @_;
+    my $text = "<hr>\n";
+    if ($slide_num) {
+        my $page_id = $self->cgi->page_id;
+	my $go = $self->loc('Go');
+        $text .= qq{<a target="SlideShow" href="index.cgi?action=slides&page_id=$page_id&slide_num=$slide_num">$go</a>\n};
+        $slide_num++;
+    }
+    return $text;
 }
 
 sub comment {

@@ -1,5 +1,5 @@
 package CGI::Kwiki::Changes;
-$VERSION = '0.16';
+$VERSION = '0.18';
 use strict;
 use base 'CGI::Kwiki', 'CGI::Kwiki::Privacy';
 
@@ -8,10 +8,7 @@ sub process {
     $self->driver->load_class('metadata');
     my $search = $self->cgi->page_id;
     return
-      $self->template->process(
-          'display_header',
-          $self->template->display_vars,
-      ) .
+      $self->template->process('display_header') .
       $self->changes .
       $self->template->process('basic_footer');
 }
@@ -19,46 +16,53 @@ sub process {
 sub changes {
     my ($self) = @_;
     my $search = $self->cgi->search;
+    my $database = $self->database;
     my $pages = [ 
         map {[$_, -M $_]} 
         grep {
             (my $page_id = $_) =~ s/.*[\/\\]//;
-            $self->is_readable($page_id);
+            $database->exists($self->unescape($page_id));
         } glob "database/*" 
     ];
-    my $html = qq{<table border="0">\n};
+    my $html = qq{<table border="0" class="changes">\n};
     for my $range
-        (["hour", 1/24],
-         ["3 hours", 0.125],
-         ["6 hours", 0.25],
-         ["12 hours", 0.5],
-         ["24 hours", 1],
-         ["2 days", 2],
-         ["3 days", 3],
-         ["week", 7],
-         ["2 weeks", 7],
-         ["month", 30],
-         ["3 months", 90],
+        ([$self->loc("hour"), 1/24],
+         [$self->loc("3 hours"), 0.125],
+         [$self->loc("6 hours"), 0.25],
+         [$self->loc("12 hours"), 0.5],
+         [$self->loc("24 hours"), 1],
+         [$self->loc("2 days"), 2],
+         [$self->loc("3 days"), 3],
+         [$self->loc("week"), 7],
+         [$self->loc("2 weeks"), 7],
+         [$self->loc("month"), 30],
+         [$self->loc("3 months"), 90],
         ) {
         my ($recent, $older) = ([], []);
         push @{$_->[1] <= $range->[1] ? $recent : $older}, $_
           for @$pages;
         $pages = $older;
         if (@$recent) {
-            $html .= qq{<tr><td colspan="5"><h2>Changes in the last $range->[0]:</h2>\n};
+            $html .= qq{<tr><th colspan="3"><h2>} .
+                     $self->loc("Changes in the last %1:", $range->[0]) .
+                     qq{</h2></th></tr>\n};
             for my $page_id (sort {-M $a <=> -M $b} 
                              map {$_->[0]} @$recent) {
                 $html .= "<tr>\n";
                 $page_id =~ s/.*[\/\\](.*)/$1/;
-                my $metadata = $self->driver->metadata->get($page_id);
+                $page_id = $self->unescape($page_id);
+                my $metadata = $self->metadata->get($page_id);
                 my $edit_by = $metadata->{edit_by} || '&nbsp;';
                 my $edit_time = $metadata->{edit_time} || '&nbsp;';
-                $html .= qq{<td nowrap="1"><a href="?$page_id">$page_id</a>\n};
-                $html .= qq{<td>&nbsp;<td nowrap="1">$edit_by\n};
-                $html .= qq{<td>&nbsp;<td nowrap="1">$edit_time GMT\n};
+		my $script = $self->script;
+                $html .= qq{<td class="page-id" nowrap="1"><a href="$script?$page_id">$page_id</a></td>\n};
+                $html .= qq{<td class="edit-by" nowrap="1">$edit_by</td>\n};
+                $html .= qq{<td class="edit-time" nowrap="1">$edit_time GMT</td>\n};
+                $html .= qq{</tr>\n};
             }
         }
     }
+    $html .= qq{</table>\n};
     return $html;
 }
 

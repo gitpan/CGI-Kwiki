@@ -1,5 +1,5 @@
 package CGI::Kwiki::Pages;
-$VERSION = '0.17';
+$VERSION = '0.18';
 use strict;
 use base 'CGI::Kwiki';
 
@@ -16,11 +16,31 @@ sub data {
 sub create_file {
     my ($self, $file_path, $content) = @_;
     (my $page_id = $file_path) =~ s!.*/!!;
-    if ($self->driver->database->exists($page_id)) {
-        my $metadata = $self->driver->metadata->get($page_id);
+    if ($self->database->exists($page_id)) {
+        my $metadata = $self->metadata->get($page_id);
         return unless ($metadata->{edit_by} || '') eq 'kwiki-install';
+        my $old_content = $self->database->load($page_id);
+        return if $content eq $old_content;
     }
-    $self->driver->database->store($content, $page_id);
+    $self->database->store($content, $page_id);
+}
+
+sub subclasses {
+    my ($self) = @_;
+    my $path = substr(__FILE__, 0, -3);
+    return unless -d $path;
+
+    my @rv;
+    my $pkg = __PACKAGE__;
+    foreach my $mod (<$path/*.pm>) {
+        require $mod;
+        $mod =~ s{\.pm$}{};
+        $mod =~ s{/}{::}g;
+        $mod =~ s{.*$pkg}{$pkg};
+        push @rv, $mod;
+    }
+
+    return @rv;
 }
 
 1;
@@ -77,8 +97,9 @@ __KwikiAbout__
 CGI::Kwiki is simple yet powerful Wiki environment written in Perl as a CPAN module distribribution. It was written by BrianIngerson.
 
 *This is CGI::Kwiki Version [#.#]* 
+  - XXX
 
-Changes in this release:
+Changes in version 0.17:
   - RCS Support!!!
   - Changed wiki_link regexps to include '_'
   - Cleaned up html and css (AdamTrickett)
@@ -88,7 +109,7 @@ Changes in this release:
   - Change localtime to gmtime
   - Added time to RecentChanges
 
-Changes in this 0.16:
+Changes in version 0.16:
   - Support Page Privacy (Public, Protected, Private)
   - Support administrator login
   - KwikiBlog is a reality
@@ -153,9 +174,33 @@ There are 2 directories in your kwiki installation that contain files that contr
 * [=template]
 * [=css]
 
-You can change the html and css files anyway that suits you. It is generally best to copy the modified files into [=template/local] and [=css/local]. This way your changes will not be overwritten if you later do a [=kwiki-install --upgrade].
+You can change the html and css files anyway that suits you. It is generally best to copy the modified files into [=local/template] and [=local/css]. This way your changes will not be overwritten if you later do a [=kwiki-install --upgrade].
 
 ^=== Perl Code Changes
+__KwikiFastCGI__
+Apache's mod_fastcgi makes Perl applications run much faster and scale well to heavy usage. Using Kwiki with mod_fastcgi is a piece of cake. 
+
+First you need is an Apache server built with mod_fstcgi support. See http://www.fastcgi.com/ for more information.
+
+Then install a Kwiki site following the normal KwikiInstallation procedures.
+
+Finally add something like this to your Apache configuration (The example is for named virtual host):
+
+  <VirtualHost *>
+    ServerName kwiki.yourhost.name
+    DocumentRoot /usr/local/www/data/kwiki
+  
+    AddHandler fastcgi-script cgi
+    DirectoryIndex index.cgi
+  
+    <Location />
+      Options ExecCGI
+    </Location>
+  </VirtualHost>
+
+That's it! You'll get an instant *performance boost*.
+
+You can switch from the standard CGI installation to mod_fastcgi anytime you want.
 __KwikiFeatures__
 The overall design goal of CGI::Kwiki is /simplicity/ and /extensibility/. 
 
@@ -414,6 +459,7 @@ Adjust to your needs.
 ^== See Also: ==
 * KwikiUpgrading
 * KwikiModPerl
+* KwikiFastCGI
 * KwikiPrivacy
 * KwikiBackup
 __KwikiKnownBugs__
@@ -537,8 +583,8 @@ CGI::Kwiki has a !PowerPoint-like slideshow built in. Give it a try.
 
 *Click Here to start the slideshow*:
 [&SLIDESHOW_SELECTOR]
-# title: Intro to Kwiki SlideShow
 ----
+[&title Intro to Kwiki SlideShow]
 ^== Welcome to the Kwiki Slide Show Example ==
 * Press spacebar to go to next slide
 * You can also click on the slide to advance
@@ -548,6 +594,8 @@ CGI::Kwiki has a !PowerPoint-like slideshow built in. Give it a try.
 * Slides are separated by horizontal lines
 ----
 ^== Controls ==
+[&img http://www.google.com/images/logo.gif]
+This is an image, thrown in just for fun.
 * Press spacebar to go to next slide
 * Press backspace to go to previous slide
 * Press '1' to start over
@@ -558,11 +606,27 @@ CGI::Kwiki has a !PowerPoint-like slideshow built in. Give it a try.
 * Mozilla uses <ctl>+ and <ctl>-
 * Very handy for adjusting on the fly
 ----
+[&lf]
+[&subtitle Animations]
+^== Linefeed Animation
+* This Slide
+* Displays
+* One Line
+* At a Time
+----
+[&lf]
+^== More Animation
+* This Slide Also Displays
+* One Line At a Time
+----
+[&subtitle]
+[&bgcolor red]
 ^== Bugs ==
 * Everything works in Mozilla and IE
 * Some browsers do not seem to respond well to the onkeypress events.
 ** Often you can get around this by using backspace or delete to go back a slide.
 ----
+[&bgcolor]
 ^== Displaying Source Code ==
 * Here is some Javascript code:
     function changeSlide(i) {
@@ -589,7 +653,7 @@ Add these features:
 * Page aliasing
 * Page renaming/refactoring
 * Revision Diff Display
-* Support [=javascript/local] and [=css/local]
+* Support [=local/javascript] and [=local/css]
 __KwikiUpgrading__
 ^== Upgrading a Kwiki Site ==
 

@@ -1,16 +1,22 @@
 package CGI::Kwiki::Metadata;
-$VERSION = '0.17';
+$VERSION = '0.18';
 use strict;
 use base 'CGI::Kwiki';
+
+sub all {
+    my ($self) = @_;
+    %{$self->get};
+}
 
 sub get {
     my ($self, $page_id, @keys) = @_;
     $page_id ||= $self->cgi->page_id;
-    my $file_path = "metabase/metadata/$page_id";
+    my $file_path = "metabase/metadata/" . $self->escape($page_id);
     my $metadata = {};
     if (-f $file_path) {
         open METADATA, $file_path 
           or return $metadata;
+        binmode(METADATA, ':utf8') if $self->use_utf8;
         for (<METADATA>) {
             if (/(\w+):\s+(.*?)\s*$/) {
                 $metadata->{$1} = $2;
@@ -24,11 +30,12 @@ sub get {
 
 sub set {
     my ($self, $page_id, @key_values) = @_;
-    my $file_path = "metabase/metadata/$page_id";
+    my $file_path = "metabase/metadata/" . $self->escape($page_id);
     umask 0000;
     open METADATA, "> $file_path" or die $!;
+    binmode(METADATA, ':utf8') if $self->use_utf8;
     my $template = $self->metadata_template;
-    print METADATA $self->render($template,
+    print METADATA $self->driver->template->render($template,
         edit_by => $self->edit_by,
         edit_time => scalar(gmtime),
         @key_values,

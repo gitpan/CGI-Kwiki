@@ -1,5 +1,5 @@
 package CGI::Kwiki::Display;
-$VERSION = '0.16';
+$VERSION = '0.18';
 use strict;
 use base 'CGI::Kwiki', 'CGI::Kwiki::Privacy';
 
@@ -9,10 +9,10 @@ sub process {
     if (not $self->is_readable) {
         return {redirect => $self->script . '?KwikiPrivatePage'};
     }
-    return $self->changes if $page_id eq 'RecentChanges';
-    return $self->edit unless $self->driver->database->exists;
-    my $wiki_text = $self->driver->database->load;
-    my $formatted = $self->driver->formatter->process($wiki_text);
+    return $self->changes if $page_id eq $self->config->changes_page;
+    return $self->edit unless $self->database->exists($page_id);
+    my $wiki_text = $self->database->load($page_id);
+    my $formatted = $self->formatter->process($wiki_text);
     $self->template->process(
         [qw(display_header display_body display_footer)],
         display => $formatted,

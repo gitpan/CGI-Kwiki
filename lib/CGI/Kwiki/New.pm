@@ -1,5 +1,5 @@
 package CGI::Kwiki::New;
-$VERSION = '0.16';
+$VERSION = '0.18';
 use strict;
 use Config;
 use File::Path;
@@ -41,14 +41,16 @@ feature options:
   --privacy    - Turn on Public/Protected/Private page security.
   
 upgrade options:
-  --upgrade    - Upgrade everything except config file and changed pages.
-  --reinstall  - Upgrade everything including config file.
-  --config     - Upgrade config file. You will lose local settings!
-  --scripts    - Upgrade cgi scripts.
-  --pages      - Upgrade default kwiki pages unless changed by a user.
-  --template   - Upgrade templates.
-  --javascript - Upgrade javascript.
-  --style      - Upgrade css stylesheets.
+  --upgrade      - Upgrade everything. Merge config.
+  --reinstall    - Upgrade everything including config file.
+  --config       - Upgrade config file. You will lose local settings!
+  --config_merge - Merge in new config file settings.
+  --scripts      - Upgrade cgi scripts.
+  --pages        - Upgrade default kwiki pages unless changed by a user.
+  --i18n         - Add internationalized page sets.
+  --template     - Upgrade templates.
+  --javascript   - Upgrade javascript.
+  --style        - Upgrade css stylesheets.
 
 END
 }
@@ -91,28 +93,41 @@ sub install {
 
 sub create {
     my ($self) = @_;
-    $self->scripts;
     $self->config;
-    $self->pages;
-    $self->template;
-    $self->javascript;
-    $self->style;
+    $self->basics;
     print "Kwiki software installed! Point your browser at this location.\n";
 }
 
 sub upgrade {
     my ($self) = @_;
-    $self->scripts;
-    $self->pages;
-    $self->template;
-    $self->javascript;
-    $self->style;
+    $self->config_merge && do {
+        $self = __PACKAGE__->new(@ARGV);
+        local $^W;
+        $self->driver(CGI::Kwiki::load_driver());
+    };
+    $self->basics;
     print "Kwiki software upgraded!\n";
 }
 
+sub basics {
+    my ($self) = @_;
+    $self->locks;
+    $self->scripts;
+    $self->template;
+    $self->javascript;
+    $self->style;
+    $self->pages;
+}
+    
 sub reinstall {
     my ($self) = @_;
     $self->create;
+}
+
+sub locks {
+    my ($self) = @_;
+    $self->mkdir('metabase');
+    $self->mkdir('metabase/lock');
 }
 
 sub scripts {
@@ -123,8 +138,20 @@ sub scripts {
 
 sub config {
     my ($self) = @_;
-    $self->driver->load_class('config_yaml');
-    $self->driver->config_yaml->create_files;
+    my $driver = $self->driver;
+    $driver->load_class('config_yaml');
+    $driver->load_class('template');
+    $driver->config_yaml->driver($driver);
+    $driver->config_yaml->create_files;
+}
+
+sub config_merge {
+    my ($self) = @_;
+    my $driver = $self->driver;
+    $driver->load_class('config_yaml');
+    $driver->load_class('template');
+    $driver->config_yaml->driver($driver);
+    $driver->config_yaml->merge_config;
 }
 
 sub pages {
@@ -134,6 +161,18 @@ sub pages {
     $self->mkdir('metabase/metadata');
     $self->driver->load_class('pages');
     $self->driver->pages->create_files;
+}
+
+sub i18n {
+    my ($self) = @_;
+    $self->driver->load_class('metadata');
+    $self->mkdir('metabase');
+    $self->mkdir('metabase/metadata');
+    $self->driver->load_class('pages');
+    foreach my $class ($self->driver->pages->subclasses) {
+	my $page = $class->new($self->driver);
+	$page->create_files;
+    }
 }
 
 sub template {
@@ -161,7 +200,7 @@ sub privacy {
     $self->mkdir('metabase/protected');
     $self->mkdir('metabase/blog');
     opendir DATABASE, "database" or die $!;
-    while (my $page_id = readdir(DATABASE)) {
+    while (my $page_id = $self->unescape(scalar readdir(DATABASE))) {
         next if $page_id =~ /^\./;
         if ((not $self->is_public($page_id)) &&
             (not $self->is_protected($page_id)) &&

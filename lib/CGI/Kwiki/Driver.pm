@@ -1,6 +1,7 @@
 package CGI::Kwiki::Driver;
-$VERSION = '0.14';
+$VERSION = '0.18';
 use strict;
+use base 'CGI::Kwiki';
 use CGI::Kwiki;
 
 attribute $_
@@ -11,10 +12,15 @@ sub new {
     my $self = bless {}, $class;
     $self->config($config);
     $self->load_class('cgi');
+    $self->load_class('prefs');
     $self->load_class('template');
+    $self->load_class('plugin');
     $self->load_class('cookie');
+    $self->load_class('metadata');
     $self->load_class('database');
     $self->load_class('formatter');
+    $self->load_class('backup');
+    $self->database->backup($self->backup);
     return $self;
 }
 
@@ -29,7 +35,7 @@ sub load_class {
     my ($self, $class) = @_;
     my $class_class = $class . '_class';
     my $class_name = $self->config->$class_class();
-    eval qq{ require $class_name }; die $@ if $@;
+    eval qq{ require $class_name }; die "require $class_name $@" if $@;
     $self->$class($class_name->new($self));
 }
 

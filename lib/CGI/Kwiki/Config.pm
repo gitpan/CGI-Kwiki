@@ -6,8 +6,9 @@ use CGI::Kwiki;
 attribute "${_}_class"
   for CGI::Kwiki::classes();
 attribute 'top_page';
-attribute 'kwiki_image';
-attribute 'title_prefix';
+attribute 'driver';
+attribute 'encoding';
+attribute 'page_language';
 
 sub all {
     my ($self) = @_;
@@ -17,7 +18,7 @@ sub all {
 sub new {
     my ($class) = @_;
     my ($config_file, @error) = 
-      grep {not /~$/} glob "config.*";
+      grep {not /(~|\.bak)$/} glob "config.*";
     if (not defined $config_file) {
         my $self = bless {}, $class;
         $self->set_defaults;
@@ -35,8 +36,28 @@ sub new {
     my $config_class = $hash->{config_class}
       or die "config_class not defined in $config_file\n";
     eval qq{ require $config_class }; die $@ if $@;
-    my $self = bless $parser->parse_file($config_file), $config_class;
+    my $self = bless $hash, $config_class;
+    attribute($_) for grep { not /_class$/ and
+        $_ ne 'top_page'
+    } keys %$hash;
     $self->set_defaults;
+
+    if ($self->encoding and $self->encoding =~ /\bauto\b/i) {
+	$self->{encoding} = (($] >= 5.008) ? 'UTF-8' : 'ISO-8859-1');
+    }
+
+    if ($self->page_language and $self->page_language =~ /\bauto\b/i and
+	$self->encoding =~ /\butf-?8\b/i and $] >= 5.008
+    ) {
+	eval "use " . $self->i18n_class;
+	for (grep /^\w+_page$/, keys %$self) {
+	    $self->{"loc_$_"} = $self->i18n_class->loc($self->{$_});
+	}
+    }
+    else {
+	$self->{"loc_$_"} ||= $self->{$_} for grep /^\w+page$/, keys %$self;
+    }
+
     return $self;
 }
 

@@ -22,6 +22,7 @@ sub wiki_text {
         $self->{wiki_text} =~ s/\015/\n/g;
         $self->{wiki_text} =~ s/\n*\z/\n/;
         $self->{wiki_text} = '' if $self->{wiki_text} eq "\n";
+        $self->decode($self->{wiki_text});
     }
     return $self->{wiki_text} 
 }
@@ -48,16 +49,18 @@ sub page_id {
     my $page_id = '';
     my $query_string = CGI::query_string();
     $query_string =~ s/%([0-9a-fA-F]{2})/pack("H*", $1)/ge;
+    $self->decode($query_string);
     if ($query_string =~ /^keywords=([$ALPHANUM\-:]+)$/) {
         $page_id = $1;
     }
     elsif ($self->action eq 'search') {
-        $page_id = $self->search eq '' ? 'SiteMap' : 'SearchResults';
+        $page_id = $self->search eq '' ? $self->loc('SiteMap') : $self->loc('SearchResults');
     }
     else {
         $page_id = CGI::param('page_id') || 
                    $self->config->top_page ||
                    '';
+        $self->decode($page_id);
     }
     $page_id = '' if $page_id =~ /[^$ALPHANUM\-\:]/;
     return $page_id || $self->config->top_page || '';
@@ -70,6 +73,14 @@ sub blog_id {
     return $blog_id;
 }
 
+sub button {
+    my ($self) = shift;
+    my %params = $self->all;
+    while (my ($k, $v) = each %params) {
+        return uc($1) if $k =~ /^button-(\w+)$/;
+    }
+}
+
 use vars qw($AUTOLOAD);
 sub AUTOLOAD {
     my $param = $AUTOLOAD;
@@ -79,8 +90,18 @@ sub AUTOLOAD {
         $self->{$param} = shift;
         return $self;
     }
-    my $value = CGI::param($param) || '';
+    my $value = $self->get_raw($param);
     $value =~ s/[^$WORD\-\:\.\,\|\ ]//g;
+    return $value;
+}
+
+sub get_raw {
+    my ($self, $param) = @_;
+    my $value = defined $self->{$param} 
+      ? $self->{$param}
+      : CGI::param($param);
+    $value = '' unless defined $value;
+    $self->decode($value);
     return $value;
 }
 

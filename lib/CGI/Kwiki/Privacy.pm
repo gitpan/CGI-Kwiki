@@ -1,6 +1,7 @@
 package CGI::Kwiki::Privacy;
 $VERSION = '0.16';
 use strict;
+use CGI::Kwiki qw(encode decode escape unescape);
 
 sub all {
     my ($self) = @_;
@@ -48,19 +49,19 @@ sub not_admin {
 sub is_public {
     my ($self, $page_id) = @_;
     $page_id ||= $self->cgi->page_id;
-    -f "metabase/public/$page_id";
+    -f "metabase/public/" . $self->escape($page_id);
 }
 
 sub is_protected {
     my ($self, $page_id) = @_;
     $page_id ||= $self->cgi->page_id;
-    -f "metabase/protected/$page_id";
+    -f "metabase/protected/" . $self->escape($page_id);
 }
 
 sub is_private {
     my ($self, $page_id) = @_;
     $page_id ||= $self->cgi->page_id;
-    -f "metabase/private/$page_id";
+    -f "metabase/private/" . $self->escape($page_id);
 }
 
 sub has_privacy {
@@ -75,7 +76,7 @@ sub set_privacy {
     return if $self->$is_method($page_id);
     for (qw(private protected public)) {
         $is_method = "is_$_";
-        my $privacy_file = "metabase/$_/$page_id";
+        my $privacy_file = "metabase/$_/" . $self->escape($page_id);
         if ($_ eq $privacy) {
             open PRIVACY, "> $privacy_file"
               or die "Can't open $privacy_file:\n$!";
@@ -98,6 +99,8 @@ sub script {
     $script =~ s/.*[\\\/]//;
     return $script;
 }
+
+sub use_utf8 { ($] >= 5.008) }
 
 1;
 

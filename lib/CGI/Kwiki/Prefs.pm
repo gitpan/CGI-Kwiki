@@ -1,40 +1,71 @@
 package CGI::Kwiki::Prefs;
-$VERSION = '0.14';
+$VERSION = '0.18';
 use strict;
 use base 'CGI::Kwiki';
 use CGI::Kwiki;
 
-attribute 'user_name';
 attribute 'error_msg';
+
+sub pref_fields {
+    qw(
+        user_name 
+        select_diff
+        show_diff
+        show_changed
+    );
+}
+
+attribute($_) for pref_fields();
+
+sub new {
+    my $class = shift;
+    my $self = $class->SUPER::new(@_);
+    $self->driver->load_class('cookie');
+    my $prefs = $self->driver->cookie->prefs;
+    for my $pref ($self->pref_fields) {
+        $self->$pref(defined $prefs->{$pref} ? $prefs->{$pref} : '')
+          unless defined $self->$pref;
+    }
+    return $self;
+}
+
+sub all {
+    my ($self) = @_;
+    map {
+        my $pref = $_;
+        ($pref, $self->$pref());
+    } $self->pref_fields;
+}
 
 sub process {
     my ($self) = @_;
-    $self->user_name($self->driver->cookie->prefs->{user_name} || '');
     $self->error_msg('');
     $self->save 
       if $self->cgi->button eq 'SAVE';
-    $self->cgi->page_id('Preferences');
+    $self->cgi->page_id($self->config->preferences_page);
     return
-      $self->template->process('display_header',
-          $self->template->display_vars,
-      ) .
+      $self->template->process('display_header') .
       $self->template->process('prefs_body',
           error_msg => $self->error_msg,
-          user_name => $self->user_name,
+          $self->all,
       ) .
       $self->template->process('basic_footer');
 }
 
 sub save {
     my ($self) = @_;
-    my $user_name = $self->cgi->user_name;
-    $self->user_name($user_name);
-    unless ($user_name eq '' or $self->driver->database->exists($user_name)) {
+    for my $pref ($self->pref_fields) {
+        $self->$pref($self->cgi->$pref);
+    }
+    unless ($self->user_name eq '' or 
+            $self->database->exists($self->user_name)
+           ) {
         $self->error_msg(
-          '<p>Username must be a valid wiki page (about yourself).</p>');
+          '<p>' . $self->loc("Username must be a valid wiki page (about yourself).") . '</p>'
+        );
         return;
     }
-    $self->driver->cookie->prefs({user_name => $user_name});
+    $self->driver->cookie->prefs({$self->all});
 }
     
 1;

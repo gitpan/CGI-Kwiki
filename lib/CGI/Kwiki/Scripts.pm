@@ -1,13 +1,7 @@
 package CGI::Kwiki::Scripts;
-$VERSION = '0.16';
+$VERSION = '0.18';
 use strict;
 use base 'CGI::Kwiki';
-
-sub new {
-    my ($class) = @_;
-    my $self = bless {}, $class;
-    return $self;
-}
 
 sub directory { #XXX
     $_[1] =~ /(.*)\// ? $1 : '.';
@@ -21,7 +15,7 @@ sub suffix { '.cgi' }
 
 sub render_template {
     my ($self, $template) = @_;
-    return $self->render($template,
+    return $self->driver->template->render($template,
         start_perl => $Config::Config{startperl},
     );
 }

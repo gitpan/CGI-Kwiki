@@ -1,8 +1,8 @@
 package CGI::Kwiki;
-$VERSION = '0.17';
+$VERSION = '0.18';
 @EXPORT = qw(attribute);
-@CHAR_CLASSES = qw($ADMIN $UPPER $LOWER $ALPHANUM $WORD);
-@EXPORT_OK = (@CHAR_CLASSES);
+@CHAR_CLASSES = qw($ADMIN $UPPER $LOWER $ALPHANUM $WORD $WIKIWORD);
+@EXPORT_OK = (@CHAR_CLASSES, qw(encode decode escape unescape));
 %EXPORT_TAGS = (char_classes => [@CHAR_CLASSES]);
 
 use strict;
@@ -12,18 +12,20 @@ use CGI qw(-no_debug);
 use vars qw($ADMIN);
 $ADMIN ||= 0;
 
-use vars qw($UPPER $LOWER $ALPHANUM $WORD);
+use vars qw($UPPER $LOWER $ALPHANUM $WORD $WIKIWORD);
 if ($] < 5.008) {
     $UPPER    = "A-Z\xc0-\xde";
     $LOWER    = "a-z\xdf-\xff";
     $ALPHANUM = "A-Za-z0-9\xc0-\xff";
     $WORD     = "A-Za-z0-9\xc0-\xff_";
+    $WIKIWORD = $WORD;
 }
 else {
-    $UPPER    = '\p{IsUpper}';
-    $LOWER    = '\p{IsLower}';
-    $ALPHANUM = '\p{IsAlpha}\p{IsDigit}';
-    $WORD     = '\p{IsAlpha}\p{IsDigit}_';
+    $UPPER    = '\p{UppercaseLetter}';
+    $LOWER    = '\p{LowercaseLetter}';
+    $ALPHANUM = '\p{Letter}\p{Number}';
+    $WORD     = '\p{Letter}\p{Number}\p{ConnectorPunctuation}';
+    $WIKIWORD = "$UPPER$LOWER\\p{Number}\\p{ConnectorPunctuation}";
 }
 
 # All classes defined by CGI::Kwiki
@@ -42,6 +44,7 @@ sub classes {
         edit
         formatter
         template
+        plugin
         search
         changes
         prefs
@@ -51,6 +54,8 @@ sub classes {
         style
         scripts
         blog
+        i18n
+        import
     )
 }
 
@@ -58,16 +63,23 @@ sub classes {
 sub run_cgi {
     eval "use CGI::Carp qw(fatalsToBrowser)";
     die $@ if $@;
-    my $driver = load_driver();
-    $CGI::Kwiki::user_name = 
-      $ENV{REMOTE_USER} || 
-      CGI->remote_host();
-    my $html = $driver->drive;
-    if (ref $html) {
-        print CGI::redirect($html->{redirect});
-    }
-    else {
-        print $driver->cookie->header, $html;
+
+    my $cgi_class = (eval { require CGI::Fast; 1 } ? 'CGI::Fast' : 'CGI');
+    while (my $cgi = $cgi_class->new) {
+        my $driver = load_driver();
+        $CGI::Kwiki::user_name = 
+            $ENV{REMOTE_USER} || 
+                CGI->remote_host();
+        my $html = $driver->drive;
+        if (ref $html) {
+            print CGI::redirect($html->{redirect});
+        } else {
+            my $header = $driver->cookie->header;
+            $driver->encode($header);
+            $driver->encode($html);
+            print $header, $html;
+        }
+	last if $cgi_class eq 'CGI';
     }
 }
 
@@ -105,6 +117,7 @@ sub attribute {
     my ($attribute) = @_;
     my $pkg = caller;
     no strict 'refs';
+    local $SIG{__WARN__} = sub {}; # shut up 'redefined' warnings
     *{"${pkg}::$attribute"} =
       sub {
           my $self = shift;
@@ -116,18 +129,31 @@ sub attribute {
 
 # The most basic attributes inherited by almost all classes
 attribute 'driver';
-attribute 'template';
 attribute 'config';
 attribute 'cgi';
+attribute 'plugin';
+attribute 'template';
+attribute 'formatter';
+attribute 'database';
+attribute 'metadata';
+attribute 'backup';
+attribute 'prefs';
+attribute 'i18n';
 
 # Constructor inherited by most classes
 sub new {
     my ($class, $driver) = @_;
     my $self = bless {}, $class;
     $self->driver($driver);
-    $self->template($driver->template);
     $self->config($driver->config);
     $self->cgi($driver->cgi);
+    $self->plugin($driver->plugin);
+    $self->template($driver->template);
+    $self->formatter($driver->formatter);
+    $self->database($driver->database);
+    $self->metadata($driver->metadata);
+    $self->backup($driver->backup);
+    $self->prefs($driver->prefs);
     return $self;
 }
 
@@ -136,7 +162,9 @@ sub load_driver {
     my $config = CGI::Kwiki::Config->new;
     my $driver_class = $config->driver_class;
     eval qq{ require $driver_class }; die $@ if $@;
-    $driver_class->new($config);
+    my $driver = $driver_class->new($config);
+    $config->driver($driver);
+    return $driver;
 }
 
 # I run a development Kwiki in the mykwiki/ subdirectory of CGI-Kwiki's
@@ -156,6 +184,7 @@ sub rebuild {
         my $label = $file;
         $label =~ s/.*\///;
         $label =~ s/\.\w+$//;
+        next if $label =~ /^%/; # XXX exclude Chinese pages
         $data .= "__${label}__\n";
         open FILE, $file or die $!;
         $data .= do {local $/; <FILE>};
@@ -223,23 +252,47 @@ sub data {
     return $data;
 }
 
-sub render {
-    my ($self, $template, %v) = @_;
-    $template =~ s{\[%\s+IF\s+(\w+)\s+%\]
-                   (.*?)
-                   \[%\s+ELSE\s+%\]
-                   (.*?)
-                   \[%\s+END\s+%\]
-                  }
-                  {${\(defined $v{$1} && $v{$1} ? $2 : $3)}}gxs;
-    $template =~ s{\[%\s+IF\s+(\w+)\s+%\]
-                   (.*?)
-                   \[%\s+END\s+%\]
-                  }
-                  {${\(defined $v{$1} && $v{$1} ? $2 : '')}}gxs;
-    $template =~ s{(\[%\s+(\w+)\s+%\]\n?)}
-                  {${\(defined $v{$2} ? $v{$2} : $1)}}g;
-    return $template;
+sub decode {
+    my ($self) = @_;
+    utf8::decode($_[1]) if $self->use_utf8 and defined $_[1];
+    return $_[1] if defined wantarray;
+}
+
+sub encode {
+    my ($self) = @_;
+    utf8::encode($_[1]) if $self->use_utf8 and defined $_[1];
+    return $_[1] if defined wantarray;
+}
+
+sub escape {
+    my ($self, $data) = @_;
+    $self->encode($data);
+    return CGI::Util::escape($data);
+}
+
+sub unescape {
+    my ($self, $data) = @_;
+    $data = CGI::Util::unescape($data);
+    $self->decode($data);
+    return $data;
+}
+
+my $use_utf8;
+sub use_utf8 {
+    my ($self) = @_;
+    $use_utf8 = $_[1] if @_ > 1;
+    return $use_utf8 if defined($use_utf8);
+    return($use_utf8 = 0) if $] < 5.008;
+    return 1 unless $self->config;
+    return($use_utf8 = (lc($self->config->encoding) =~ /^utf-?8$/));
+}
+
+sub loc {
+    my ($self) = shift;
+    my $i18n_class = $self->config->{i18n_class} or die;
+    eval "use $i18n_class; 1" or return $_[0];
+    $i18n_class->initialize($self->use_utf8 || 0);
+    return $i18n_class->loc(@_);
 }
 
 1;
