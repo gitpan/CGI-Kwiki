@@ -1,21 +1,26 @@
 package CGI::Kwiki::Formatter;
-$VERSION = '0.10';
+$VERSION = '0.11';
 use strict;
 use CGI::Kwiki;
 
+attribute 'driver';
+
 sub new {
-    my ($class) = @_;
+    my ($class, $driver) = @_;
     my $self = bless {}, $class;
+    $self->driver($driver);
     return $self;
 }
 
 sub process_order {
     return qw(
+        function
         table code header_1 header_2 header_3 
         escape_html
         lists comment horizontal_line
         paragraph 
-        named_http_link http_link no_wiki_link wiki_link force_wiki_link
+        named_http_link no_http_link http_link
+        no_wiki_link wiki_link force_wiki_link
         bold italic underscore
     );
 }
@@ -23,7 +28,7 @@ sub process_order {
 sub process {
     my ($self, $wiki_text) = @_;
     my $array = [];
-    push @$array, chunk->new($wiki_text, 'wiki');
+    push @$array, $wiki_text;
     for my $method ($self->process_order) {
         $array = $self->dispatch($array, $method);
     }
@@ -39,19 +44,42 @@ sub dispatch {
             push @$new_array, $self->dispatch($chunk, $method);
         }
         else {
-            if ($chunk->type eq 'wiki') {
-                push @$new_array, map {
-                    ref($_) 
-                      ? $_
-                      : chunk->new($_, 'wiki')
-                } $self->$method($chunk->text);
+            if (ref $chunk) {
+                push @$new_array, $chunk;
             }
             else {
-                push @$new_array, $chunk;
+                push @$new_array, $self->$method($chunk);
             }
         }
     }
     return $new_array;
+}
+
+sub function {
+    my ($self, $text) = @_;
+    my $switch = 0;
+    return map {
+        my @return = ($_);
+        if ($switch++ % 2) {
+            s#%%(.*?)%%#$1#;
+            my ($method, @args) = split;
+            @return = ();
+            if ($self->can($method)) {
+                @return = $self->$method(@args);
+            }
+        }
+        @return
+    }
+    split m#(^%%[A-Z_]+\b.*?%%$)#m, $text;
+}
+
+sub TRANSCLUDE_HTTP_BODY {
+    my ($self, $url) = @_;
+    require LWP::Simple;
+    my $html = LWP::Simple::get($url)
+      or return '';
+    $html =~ s#.*<body>(.*)</body>.*#$1#is;
+    \ $html;
 }
 
 sub table {
@@ -122,7 +150,7 @@ sub format_table {
         $table .= qq{</tr>\n};
     }
     $table .= qq{</table></blockquote>\n};
-    return chunk->new($table, 'html');
+    return \$table;
 }
 
 sub no_wiki_link {
@@ -131,7 +159,7 @@ sub no_wiki_link {
     return map {
         if ($switch++ % 2) {
             s#!##;
-            $_ = chunk->new($_, 'html');
+            $_ = \ do {my $x = $_};
         }
         $_;
     }
@@ -144,7 +172,7 @@ sub wiki_link {
     return map {
         if ($switch++ % 2) {
             $_ = qq{<a href="?$_">$_</a>};
-            $_ = chunk->new($_, 'html');
+            $_ = \ do {my $x = $_};
         }
         $_;
     }
@@ -157,11 +185,24 @@ sub force_wiki_link {
     return map {
         if ($switch++ % 2) {
             $_ = qq{<a href="?$_">$_</a>};
-            $_ = chunk->new($_, 'html');
+            $_ = \ do {my $x = $_};
         }
         $_;
     }
     split m!\[([\w-]+)\]!, $text;
+}
+
+sub no_http_link {
+    my ($self, $text) = @_;
+    my $switch = 0;
+    return map {
+        if ($switch++ % 2) {
+            s#!##;
+            $_ = \ do {my $x = $_};
+        }
+        $_;
+    }
+    split m#(!http://\S+?(?=[),.:;]?\s|$))#m, $text;
 }
 
 sub http_link {
@@ -169,12 +210,17 @@ sub http_link {
     my $switch = 0;
     return map {
         if ($switch++ % 2) {
-            $_ = qq{<a href="$_">$_</a>};
-            $_ = chunk->new($_, 'html');
+            if (/\.(jpg|gif|jpeg|png)/) {
+                $_ = qq{<img src="$_">};
+            }
+            else {
+                $_ = qq{<a href="$_">$_</a>};
+            }
+            $_ = \ do {my $x = $_};
         }
         $_;
     }
-    split m!(http://\S+)!, $text;
+    split m!(http://\S+?(?=[),.:;]?\s|$))!m, $text;
 }
 
 sub named_http_link {
@@ -187,7 +233,7 @@ sub named_http_link {
             $link = $2 if s#^\[(.*)http:(\S+)(.*)\]$#$1$3#;
             s#\s*(.*?)\s*#$1#;
             $_ = qq{<a href="$link">$_</a>};
-            $_ = chunk->new($_, 'html');
+            $_ = \ do {my $x = $_};
         }
         $_;
     }
@@ -218,7 +264,7 @@ sub code {
     return map {
         if ($switch++ % 2) {
             $_ = $self->preformat($_);
-            $_ = chunk->new($_, 'html');
+            $_ = \ do {my $x = $_};
         }
         $_;
     }
@@ -271,7 +317,6 @@ sub paragraph {
     return map {
         unless ($switch++ % 2) {
             $_ = "<p>\n$_\n</p>\n";
-            $_ = chunk->new($_, 'wiki');
         }
         $_;
     }
@@ -304,7 +349,7 @@ sub horizontal_line {
     return map {
         if ($switch++ % 2) {
             s!----+!<hr>!;
-            $_ = chunk->new($_, 'html');
+            $_ = \ do {my $x = $_};
         }
         $_;
     }    
@@ -317,7 +362,7 @@ sub comment {
     return map {
         if ($switch++ % 2) {
             s/\# (.*)/<!-- $1 -->/;
-            $_ = chunk->new($_, 'html');
+            $_ = \ do {my $x = $_};
         }
         $_;
     }    
@@ -330,7 +375,7 @@ sub header_1 {
     return map {
         if ($switch++ % 2) {
             s!= (.*) =!<h1>$1</h1>!;
-            $_ = chunk->new($_, 'html');
+            $_ = \ do {my $x = $_};
         }
         $_;
     }    
@@ -343,7 +388,7 @@ sub header_2 {
     return map {
         if ($switch++ % 2) {
             s!== (.*) ==!<h2>$1</h2>!;
-            $_ = chunk->new($_, 'html');
+            $_ = \ do {my $x = $_};
         }
         $_;
     }    
@@ -356,7 +401,7 @@ sub header_3 {
     return map {
         if ($switch++ % 2) {
             s!=== (.*) ===!<h3>$1</h3>!;
-            $_ = chunk->new($_, 'html');
+            $_ = \ do {my $x = $_};
         }
         $_;
     }    
@@ -367,31 +412,12 @@ sub combine_chunks {
     my ($self, $chunk_array) = @_;
     my $formatted_text = '';
     for my $chunk (@$chunk_array) {
-        if (ref $chunk eq 'ARRAY') {
-            $formatted_text .= $self->combine_chunks($chunk);
-        }
-        else {
-            $formatted_text .= $chunk->text;
-        }
+        $formatted_text .= 
+          (ref $chunk eq 'ARRAY') ? $self->combine_chunks($chunk) :
+          (ref $chunk) ? $$chunk :
+          $chunk
     }
     return $formatted_text;
-}
-
-#==============================================================================
-package chunk;
-use strict;
-use CGI::Kwiki;
-
-attribute 'type';
-attribute 'text';
-
-sub new {
-    my ($class, $text, $type) = @_;
-    $type ||= 'wiki';
-    my $self = bless {}, $class;
-    $self->type($type);
-    $self->text($text);
-    return $self;
 }
 
 1;

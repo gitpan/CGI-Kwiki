@@ -1,5 +1,5 @@
 # $File: //depot/cpan/Module-Install/lib/Module/Install/Makefile.pm $ $Author: ingy $
-# $Revision: #38 $ $Change: 1390 $ $DateTime: 2003/03/22 22:04:23 $ vim: expandtab shiftwidth=4
+# $Revision: 1.1 $ $Change: 1398 $ $DateTime: 2003/03/26 08:45:50 $ vim: expandtab shiftwidth=4
 
 package Module::Install::Makefile;
 use Module::Install::Base; @ISA = qw(Module::Install::Base);
@@ -46,7 +46,7 @@ sub write {
 
     # merge both kinds of requires into prereq_pm
     my $prereq = ($args->{PREREQ_PM} ||= {});
-    %$prereq = ( %$prereq, map @$_, @{$self->$_} )
+    %$prereq = ( %$prereq, map { @{$_} } @{ $self->$_ } )
         for grep $self->$_, qw(requires build_requires);
 
     # merge both kinds of requires into prereq_pm

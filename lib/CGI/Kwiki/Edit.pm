@@ -1,5 +1,5 @@
 package CGI::Kwiki::Edit;
-$VERSION = '0.10';
+$VERSION = '0.11';
 use strict;
 use CGI::Kwiki;
 
@@ -43,7 +43,7 @@ sub save {
     my ($self) = @_;
     my $page_id = $self->driver->cgi->page_id;
     my $wiki_text = $self->driver->cgi->wiki_text;
-    $self->driver->database->store;
+    $self->driver->database->store($page_id, $wiki_text);
 
     return { redirect => "?$page_id" };
 }

@@ -1,5 +1,5 @@
 package CGI::Kwiki::Pages;
-$VERSION = '0.10';
+$VERSION = '0.11';
 use strict;
 use CGI::Kwiki;
 
@@ -14,7 +14,7 @@ sub new {
 
 sub default_pages {
     my ($self) = @_;
-    my @pages = split /^__(\w+)__\n/m, join '', <DATA>;
+    my @pages = split /^__(\w+)__/m, join '', <DATA>;
     shift @pages;
     my %pages = @pages;
     $self->driver->load_class('database');

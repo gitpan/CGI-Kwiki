@@ -8,7 +8,7 @@ plan(tests => 10);
 my $cwd = cwd;
 ok(mkdir 't/kwiki');
 ok(chdir 't/kwiki');
-ok(system("PERL5LIB=../../blib/lib ../../blib/script/kwiki.cgi --install") == 0);
+ok(system("PERL5LIB=../../blib/lib;../../blib/script/kwiki-install") == 0);
 ok(-f 'config.yaml');
 ok(-d 'database');
 ok(-f 'database/HomePage');

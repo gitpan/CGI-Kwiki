@@ -1,6 +1,16 @@
 # Change log for CGI::Kwiki
 
 ---
+version: 0.11
+date:    Thu May  8 08:29:54 PDT 2003
+changes:
+  - Cookie support
+  - Inline images
+  - Format method calls
+  - Better formatting algorithm
+  - Applied Nico Hoogervorsti's patch for tests
+  - Moved kwiki.cgi to kwiki-install
+---
 version: 0.10
 date:    Thu Apr 17 16:03:52 PDT 2003
 changes:

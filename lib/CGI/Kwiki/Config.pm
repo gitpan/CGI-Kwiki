@@ -1,5 +1,5 @@
 package CGI::Kwiki::Config;
-$VERSION = '0.10';
+$VERSION = '0.11';
 use strict;
 use CGI::Kwiki;
 
@@ -7,6 +7,7 @@ attribute 'new_class';
 attribute 'config_class';
 attribute 'driver_class';
 attribute 'cgi_class';
+attribute 'cookie_class';
 attribute 'database_class';
 attribute 'display_class';
 attribute 'edit_class';

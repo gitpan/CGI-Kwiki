@@ -3,6 +3,7 @@ MANIFEST			This list of files
 MANIFEST.SKIP
 META.yml
 Makefile.PL
+README
 inc/Module/Install.pm
 inc/Module/Install/Base.pm
 inc/Module/Install/Include.pm
@@ -12,12 +13,13 @@ inc/Module/Install/Scripts.pm
 inc/Test.pm
 inc/Test/Builder.pm
 inc/Test/More.pm
-kwiki.cgi
+kwiki-install
 lib/CGI/Kwiki.pm
 lib/CGI/Kwiki/CGI.pm
 lib/CGI/Kwiki/Changes.pm
 lib/CGI/Kwiki/Config.pm
 lib/CGI/Kwiki/ConfigParse_yaml.pm
+lib/CGI/Kwiki/Cookie.pm
 lib/CGI/Kwiki/Database.pm
 lib/CGI/Kwiki/Display.pm
 lib/CGI/Kwiki/Driver.pm

@@ -1,34 +1,22 @@
 #!/usr/bin/perl -w
 
-$VERSION = '0.10';
+$VERSION = '0.11';
 use strict;
 
-BEGIN {
-    my $arg = shift(@ARGV) || '';
-    if ($arg eq '--install') {
-        require CGI::Kwiki::New;
-        CGI::Kwiki::New->new->create_kwiki;
-        exit(0);
-    }
-    elsif ($arg =~ /^-/) {
-        die "Unknown argument '$arg' for kwiki.cgi\n";
-    }
-}
-
-use CGI::Kwiki;
-CGI::Kwiki::run_cgi();
+require CGI::Kwiki::New;
+CGI::Kwiki::New->new->create_kwiki(@ARGV);
 
 __END__
 
 =head1 NAME
 
-kwiki.cgi - The cgi-bin component for CGI::Kwiki
+kwiki-install - The CGI::Kwiki installer
 
 =head1 USAGE
 
     > mkdir cgi-bin/my-kwiki
     > cd cgi-bin/my-kwiki
-    > kwiki.cgi --install
+    > kwiki-install
 
     Kwiki software installed! Point your browser at this location.
 

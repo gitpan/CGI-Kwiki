@@ -1,5 +1,5 @@
 package CGI::Kwiki::Driver;
-$VERSION = '0.10';
+$VERSION = '0.11';
 use strict;
 use CGI::Kwiki;
 use CGI;
@@ -8,6 +8,7 @@ use CGI;
 attribute 'config';
 attribute 'database';
 attribute 'cgi';
+attribute 'cookie';
 attribute 'formatter';
 attribute 'template';
 attribute 'display';
@@ -24,6 +25,7 @@ sub new {
     $self->config($config);
     $self->load_class('database');
     $self->load_class('cgi');
+    $self->load_class('cookie');
     $self->load_class('template');
     return $self;
 }

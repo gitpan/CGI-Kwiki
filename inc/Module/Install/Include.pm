@@ -1,5 +1,5 @@
-# $File: //depot/cpan/Module-Install/lib/Module/Install/Include.pm $ $Author: autrijus $
-# $Revision: #7 $ $Change: 1375 $ $DateTime: 2003/03/18 12:29:32 $ vim: expandtab shiftwidth=4
+# $File: //depot/cpan/Module-Install/lib/Module/Install/Include.pm $ $Author: ingy $
+# $Revision: 1.1 $ $Change: 1375 $ $DateTime: 2003/03/18 12:29:32 $ vim: expandtab shiftwidth=4
 
 package Module::Install::Include;
 use Module::Install::Base; @ISA = qw(Module::Install::Base);

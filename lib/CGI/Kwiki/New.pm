@@ -1,5 +1,5 @@
 package CGI::Kwiki::New;
-$VERSION = '0.10';
+$VERSION = '0.11';
 use strict;
 use Config;
 use File::Path;
@@ -43,6 +43,7 @@ sub create_config_file {
 config_class:    CGI::Kwiki::Config
 driver_class:    CGI::Kwiki::Driver
 cgi_class:       CGI::Kwiki::CGI
+cookie_class:    CGI::Kwiki::Cookie
 database_class:  CGI::Kwiki::Database
 display_class:   CGI::Kwiki::Display
 edit_class:      CGI::Kwiki::Edit
@@ -72,9 +73,16 @@ sub create_database {
 sub create_cgi {
     my ($self) = @_;
     unlink('index.cgi');
-    require File::Copy;
-    File::Copy::copy($0, 'index.cgi')
-      or die "Can't copy $0 to ./index.cgi\n";
+
+    open INDEX, '> index.cgi';
+    print INDEX <<END;
+$Config::Config{startperl} -w
+use lib '.';
+use CGI::Kwiki;
+CGI::Kwiki::run_cgi();
+END
+    close INDEX;
+
     umask 0000;
     chmod(0755, 'index.cgi') or die $!;
 }

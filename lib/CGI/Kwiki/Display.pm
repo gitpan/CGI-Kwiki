@@ -1,5 +1,5 @@
 package CGI::Kwiki::Display;
-$VERSION = '0.10';
+$VERSION = '0.11';
 use strict;
 use CGI::Kwiki;
 
@@ -19,9 +19,10 @@ sub process {
     return $self->changes if $page_id eq 'RecentChanges';
     return $self->edit unless $self->driver->database->exists;
     my $wiki_text = $self->driver->database->load;
+    my $formatted = $self->driver->formatter->process($wiki_text);
     return
       $self->driver->template->header .
-      $self->driver->formatter->process($wiki_text) .
+      $self->driver->template->display_body($formatted) .
       $self->driver->template->display_footer;
 }
 

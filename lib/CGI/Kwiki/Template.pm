@@ -1,5 +1,5 @@
 package CGI::Kwiki::Template;
-$VERSION = '0.10';
+$VERSION = '0.11';
 use strict;
 use CGI::Kwiki;
 
@@ -97,6 +97,11 @@ sub edit_body {
 to set your user name.) 
 </form>
 END
+}
+
+sub display_body {
+    my ($self, $body) = @_;
+    return $body;
 }
 
 sub preview_body {

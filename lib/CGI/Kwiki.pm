@@ -1,5 +1,5 @@
 package CGI::Kwiki;
-$VERSION = '0.10';
+$VERSION = '0.11';
 @EXPORT = qw(attribute);
 use strict;
 use base 'Exporter';
@@ -31,7 +31,7 @@ sub run_cgi {
         print CGI::redirect($html->{redirect});
     }
     else {
-        print CGI::header(), $html;
+        print $driver->cookie->header, $html;
     }
 }
 
@@ -47,7 +47,7 @@ CGI::Kwiki - A Quickie Wiki that's not too Tricky
 
     > mkdir cgi-bin/my-kwiki
     > cd cgi-bin/my-kwiki
-    > kwiki.cgi --install
+    > kwiki-install
 
     Kwiki software installed! Point your browser at this location.
 

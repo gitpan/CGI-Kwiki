@@ -1,5 +1,5 @@
 package CGI::Kwiki::Database;
-$VERSION = '0.10';
+$VERSION = '0.11';
 use strict;
 use CGI::Kwiki;
 
