@@ -1,0 +1,6 @@
+^Makefile$
+^blib/
+^pm_to_blib$
+^CGI-Kwiki-
+^kwiki/
+^inc/SCRIPTS/
