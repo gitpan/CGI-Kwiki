@@ -1,21 +1,26 @@
 package CGI::Kwiki::Pages;
-$VERSION = '0.12';
+$VERSION = '0.14';
 use strict;
 use base 'CGI::Kwiki';
 
-sub default_pages {
-    my ($self) = @_;
-    my @pages = split /^__(\w+)__/m, join '', <DATA>;
-    shift @pages;
-    my %pages = @pages;
-    $self->driver->load_class('database');
-    $self->driver->database->store_new('HomePage', $pages{HomePage});
-    delete $pages{HomePage};
-    for my $page_id (keys %pages) {
-        $self->driver->database->store($page_id, $pages{$page_id});
-    }
+CGI::Kwiki->rebuild if @ARGV and $ARGV[0] eq '--rebuild';
+
+sub directory { 'database' }
+
+sub data {
+    join '', map { s/^\^=/=/; $_ } <DATA>;
 }
-    
+
+sub create_file {
+    my ($self, $file_path, $content) = @_;
+    (my $page_id = $file_path) =~ s!.*/!!;
+    return if $page_id eq 'HomePage' and 
+              $self->driver->database->exists('HomePage');
+    $self->driver->database->store($content, $page_id);
+}
+
+1;
+
 __DATA__
 
 =head1 NAME 
@@ -41,17 +46,10 @@ See http://www.perl.com/perl/misc/Artistic.html
 
 =cut
 
-__AgileProgrammingLanguages__
-"Agile" is the latest term for classifying what are commonly referred to as "Scripting" languages. This includes (minimally):
-
-* Perl
-* Python
-* PHP
-* Ruby
 __BrianIngerson__
 Brian "ingy" Ingerson is a Perl devotee and [CPAN http://search.cpan.org/author/INGY/] module author. His modules include CGI::Kwiki which is the Wiki software you are presently using.
 
-He has a dream to see the communities of all the AgileProgrammingLanguages working together. He is attemping to facilitate this in many ways including:
+He has a dream to see the communities of all the /agile programming languages/ (Perl, Python, PHP, Ruby) working together. He is attemping to facilitate this in many ways including:
 
 * [YAML http://www.yaml.org]
 * [FreePAN http://www.freepan.org]
@@ -62,14 +60,28 @@ __HomePage__
 
 This is the *default* home page. You should change this page /right away/.
 
-Just click the edit button below.
+Just click the EDIT button below.
 
-You may also want to add a logo image in the config.yaml file. It will appear in the upper lefthand corner.
+You may also want to add a KwikiLogoImage in the config.yaml file. It will appear in the upper lefthand corner of each page.
 ----
-If you need help using wiki first, check out:
+If you need assitance on using a Kwiki first, check out KwikiHelpIndex.
+__KwikiAbout__
+CGI::Kwiki is simple yet powerful Wiki environment written in Perl as a CPAN module distribribution. It was written by BrianIngerson.
 
-* KwikiHelpIndex
-* KwikiFeatures
+^=== This is CGI::Kwiki Version 0.14 ===
+
+* Works with mod_perl.
+* Preferences works.
+* Support for page metadata.
+* RecentChanges shows who last edited page.
+* Almost all non-perl content is now written to appropriate files. Javascript, CSS etc. Much easier to maintain and extend now.
+* Support mailto links and inline code.
+* https links added. Thanks to GregSchueler.
+* ':' added to charset for page names. Suggested by JamesFitzGibbon.
+* Javascript fix reported by MikeArms.
+* Security hole in CGI params fixed. Reported by TimSweetman.
+* Emacs artifact bug fix by HeikkiLehvaslaiho.
+* Cleaned up unneeded <p> tags. Reported by HolgerSchurig
 __KwikiBlog__
 *Due next release or two*.
 
@@ -82,6 +94,7 @@ Even so, Kwiki will have some killer builtin features not available in most wiki
 * KwikiSlideShow
 * KwikiBlog
 * KwikiSisters
+* KwikiHotKeys
 * KwikiFit
 * KwikiPod
 
@@ -95,13 +108,13 @@ CGI::Kwiki::Formatter is the module that does all the formatting from Wiki text 
 __KwikiFormattingRules__
 This page describes the wiki markup language used by this kwiki.
 ----
-= Level 1 Heading (H1) =
+^= Level 1 Heading (H1) =
   = Level 1 Heading (H1) =
 ----
-== Level 2 Heading (H2) ==
+^== Level 2 Heading (H2) ==
   == Level 2 Heading (H2) ==
 ----
-=== Level 3 Heading (H3) ===
+^=== Level 3 Heading (H3) ===
   === Level 3 Heading (H3) ===
 ----
 The horizontal lines in this page are made with 4 or more dashes:
@@ -118,6 +131,8 @@ Like this. Another paragraph.
   *Bold text*, /italic text/, and _underscore text_.
 /*Combination of bold and italics*/
   /*Combination of bold and italics*/
+Inline code like [=/etc/passwd] or [=CGI::Kwiki]
+  Inline code like [=/etc/passwd] or [=CGI::Kwiki]
 ----
 WikiLinks are formed by two or more words in /camel-case/.
   WikiLinks are formed by two or more words in /camel-case/.
@@ -131,6 +146,8 @@ Sometimes !WordsShouldNotMakeAWikiLink so put a '!' beforehand.
   Sometimes !WordsShouldNotMakeAWikiLink so put a '!' beforehand.
 Same thing with !http://foobar.com
   Same thing with !http://foobar.com
+Mailto links are just email addresses like foo@bar.com.
+  Mailto links are just email addresses like foo@bar.com.
 ----
 Links to images display the image:
 
@@ -222,23 +239,62 @@ MSG
 __KwikiHelpIndex__
 CGI::Kwiki is simple yet powerful Wiki environment written in Perl as a CPAN module distribribution. It was written by BrianIngerson.
 
-=== Kwiki Basics ===
+^=== Kwiki Basics ===
 
-* KwikiFormattingRules
 * KwikiInstallation
 * KwikiFeatures
+* KwikiFormattingRules
+* KwikiNavigation
 
-=== CGI::Kwiki Class/Module Documentation ===
+^=== CGI::Kwiki Development ===
 
-* KwikiFormatterModule
-
-=== CGI::Kwiki Development ===
-
+* KwikiAbout
 * KwikiTodo
 * KwikiKnownBugs
 
+^=== CGI::Kwiki Class/Module Documentation ===
+
+* KwikiModule
+* KwikiDriverModule
+* KwikiConfigModule
+* KwikiConfigYamlModule
+* KwikiFormatterModule
+* KwikiDatabaseModule
+* KwikiMetadataModule
+* KwikiDisplayModule
+* KwikiEditModule
+* KwikiTemplateModule
+* KwikiCgiModule
+* KwikiCookieModule
+* KwikiSearchModule
+* KwikiChangesModule
+* KwikiPrefsModule
+* KwikiNewModule
+* KwikiPagesModule
+* KwikiStyleModule
+* KwikiScriptsModule
+* KwikiJavascriptModule
+* KwikiSlidesModule
+
 *NOTE*: It is wise not to make local modifications of pages that begin with "Kwiki" as these pages will be replaced when you upgrade the CGI::Kwiki software.
+__KwikiHotKeys__
+*Coming Soon*
+
+Kwiki defines a number of special keys you can press at any time for enhanced KwikiNavigation:
+
+* t - Top Page
+* r - RecentChanges
+* spacebar - Next most recent page
+* e - Edit
+* s - Save
+* p - Preview
+* h - KwikiHelpIndex
+* ? - KwikiHotKeys
+* ! - A Random Kwiki Page
+* $ - Donate to the Kwiki Project
 __KwikiInstallation__
+^== Installing a Kwiki Site ==
+
 Kwiki is a snap to install.
 
 First:
@@ -248,6 +304,7 @@ First:
 Second:
 * Make a new directory in your Apache cgi-bin.
 * Go into this directory and run:
+
   kwiki-install
 
 Third:
@@ -255,13 +312,15 @@ Third:
 * Viola! You can set up new Kwikis in seconds.
 ----
 
-== Upgrading a Kwiki Site ==
-After installing the new CGI::Kwiki module, just cd into the old Kwiki directory and type:
+^== Upgrading a Kwiki Site ==
+
+After installing the new CGI::Kwiki module, just cd into the old Kwiki directory and reinstall with:
+
   kwiki-install
 
 ----
 
-== Apache Config ==
+^== Apache Config ==
 
 Here's a sample Apache config section that may help.
 
@@ -270,20 +329,63 @@ Here's a sample Apache config section that may help.
       Order allow,deny
       Allow from all
       AllowOverride None
-      Options ExecCGI FollowSymLinks Indexes
+      Options ExecCGI
       AddHandler cgi-script .cgi
   </Directory>
 
 Adjust to your needs.
-__KwikiKnownBugs__
 
+^== See Also: ==
+* KwikiModPerl
+__KwikiKnownBugs__
 See also: KwikiTodo
 
-* Preferences does not work yet
 * No backup system yet
 * Search requires unix 'grep' command
+__KwikiLogoImage__
+A logo image is something like a "coat of arms" for your kwiki. It is very useful for identifying your kwiki, especially from other wiki sites.
 
+Kwiki formatting looks best when your image is 90x90 pixels. You should also have a second version of your image that renders nicely at 50x50 pixels. This will be used by KwikiSisters to link to your site.
+__KwikiModPerl__
+Apache's mod_perl makes Perl applications run much faster and scale well to heavy usage. Using Kwiki with mod_perl is a piece of cake. 
 
+First you need is an Apache server built with mod_perl support. See http://perl.apache.org for more information.
+
+Then install a Kwiki site following the normal KwikiInstallation procedures.
+
+Finally add something like this to your Apache configuration:
+
+  Alias /kwiki/ /home/ingy/kwiki/
+  <Directory /home/ingy/kwiki/>
+      Order allow,deny
+      Allow from all
+      AllowOverride None
+      Options None
+      SetHandler perl-script
+      PerlHandler CGI::Kwiki
+  </Directory>
+  <Directory /home/ingy/kwiki/css/>
+      Order allow,deny
+      Allow from all
+      AllowOverride None
+      Options None
+      SetHandler none
+  </Directory>
+  <Directory /home/ingy/kwiki/javascript/>
+      Order allow,deny
+      Allow from all
+      AllowOverride None
+      Options None
+      SetHandler none
+  </Directory>
+
+That's it! You'll get an instant *performance boost*.
+
+You can switch from the standard CGI installation to mod_perl anytime you want.
+__KwikiNavigation__
+* Use the RecentChanges link at the top of each page to find out which pages have been edited lately.
+* The *Search* box let's you search the full text of kwiki pages for a given term.
+* Use the KwikiHotKeys to move around the Kwiki easily.
 __KwikiPod__
 *Due soon*
 
@@ -305,31 +407,31 @@ CGI::Kwiki has a !PowerPoint-like slideshow built in. Give it a try.
 %%SLIDESHOW_SELECTOR%%
 # title: Intro to Kwiki SlideShow
 ----
-== Welcome to the Kwiki Slide Show Example ==
+^== Welcome to the Kwiki Slide Show Example ==
 * Press spacebar to go to next slide
 * You can also click on the slide to advance
 ----
-== How it works ==
+^== How it works ==
 * You create all your slides as a single wiki page
 * Slides are separated by horizontal lines
 ----
-== Controls ==
+^== Controls ==
 * Press spacebar to go to next slide
 * Press backspace to go to previous slide
 * Press '1' to start over
 * Press 'q' to quit
 ----
-== Adjustments ==
+^== Adjustments ==
 * You should probably adjust your fonts
 * Mozilla uses <ctl>+ and <ctl>-
 * Very handy for adjusting on the fly
 ----
-== Bugs ==
+^== Bugs ==
 * Everything works in Mozilla and IE
 * Some browsers do not seem to respond well to the onkeypress events.
 ** Often you can get around this by using backspace or delete to go back a slide.
 ----
-== Displaying Source Code ==
+^== Displaying Source Code ==
 * Here is some Javascript code:
     function changeSlide(i) {
         var myForm = document.getElementsByTagName("form")[0];
@@ -346,19 +448,24 @@ CGI::Kwiki has a !PowerPoint-like slideshow built in. Give it a try.
                                 : $self->slide;
     }
 ----
-== The End ==
+^== The End ==
 __KwikiTodo__
 See also: KwikiKnownBugs
 
-* Support preferences:
-** User name
-** Edit buttons on top or bottom
+Address:
 * Strategy for handling edit collisions
 * RCS revision control
+* Public/Protected/Private security with basic authentication
 
-And these features:
+Add these features:
 
 * KwikiSisters
 * KwikiBlog
 * KwikiFit
 * KwikiPod
+__KwikiUserName__
+You should strongly consider entering a username in [Preferences http:index.cgi?action=prefs]. This will allow the kwiki to keep track of who changed what page. The username will show up in the RecentChanges page.
+
+The username is saved in a cookie, so it should stay around after you are done with your session. If you happen to be using a public machine, you may wish to clear the username when you are done.
+
+By default Kwiki requires that you create a page about yourself prior to setting your username. So if your name is Eddy Merckz, you should create a page called EddyMerckz, and describe yourself a bit. Then you can go to [Preferences http:index.cgi?action=prefs], and set your username.

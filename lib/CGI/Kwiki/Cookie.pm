@@ -1,9 +1,8 @@
 package CGI::Kwiki::Cookie;
-$VERSION = '0.12';
+$VERSION = '0.14';
 use strict;
 use base 'CGI::Kwiki';
 use CGI::Kwiki;
-use CGI();
 
 attribute 'prefs';
 
@@ -33,6 +32,8 @@ sub fetch {
 }
 
 1;
+
+__END__
 
 =head1 NAME 
 

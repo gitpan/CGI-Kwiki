@@ -1,5 +1,5 @@
 package CGI::Kwiki::Database;
-$VERSION = '0.12';
+$VERSION = '0.14';
 use strict;
 use base 'CGI::Kwiki';
 
@@ -15,7 +15,8 @@ sub load {
     my $file_path = "database/$page_id";
     if (-f $file_path) {
         local($/, *WIKIPAGE);
-        open WIKIPAGE, $file_path or die $!;
+        open WIKIPAGE, $file_path 
+          or die "Can't open $file_path for input:\n$!";
         return <WIKIPAGE>;
     }
     else {
@@ -24,24 +25,22 @@ sub load {
 }
 
 sub store {
-    my ($self, $page_id, $wiki_text) = @_;
+    my ($self, $wiki_text, $page_id) = @_;
+    $page_id ||= $self->cgi->page_id;
     my $file_path = "database/$page_id";
-    open WIKIPAGE, "> $file_path" or die $!;
+    umask 0000;
+    open WIKIPAGE, "> $file_path"
+      or die "Can't open $file_path for output:\n$!";
     print WIKIPAGE $wiki_text;
     close WIKIPAGE;
-}
 
-sub store_meta {
-}
-
-sub store_new {
-    my $self = shift;
-    my ($page_id) = @_;
-    return 0 if -f "database/$page_id";
-    $self->store(@_);
+    $self->driver->load_class('metadata');
+    $self->driver->metadata->set($page_id);
 }
 
 1;
+
+__END__
 
 =head1 NAME 
 

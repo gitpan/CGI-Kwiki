@@ -1,13 +1,14 @@
 package CGI::Kwiki::CGI;
-$VERSION = '0.12';
+$VERSION = '0.14';
 use strict;
 use base 'CGI::Kwiki';
 
-sub button {
-    my ($self) = shift(@_);
-    $self->{button} = CGI::param('button')
-      unless defined $self->{button};
-    return $self->{button} || '' 
+sub all {
+    my ($self) = @_;
+    return (
+        CGI::Vars(), 
+        page_id => $self->page_id,
+    );
 }
 
 sub wiki_text {
@@ -22,29 +23,15 @@ sub wiki_text {
     return $self->{wiki_text} 
 }
 
-sub search {
-    my ($self) = shift(@_);
-    $self->{search} = CGI::param('search')
-      unless defined $self->{search};
-    return $self->{search} 
-}
-
 sub action {
     my ($self) = shift(@_);
     if (@_) {
         $self->{action} = shift(@_);
         return $self;
     }
-    return CGI::param('action') || 'display';
-}
-
-sub user_name {
-    my ($self) = shift(@_);
-    if (@_) {
-        $self->{user_name} = shift(@_);
-        return $self;
-    }
-    return CGI::param('user_name') || '';
+    my $action = CGI::param('action') || '';
+    $action = '' if $action =~ /[^\w]/;
+    return $action || 'display';
 }
 
 sub page_id {
@@ -57,13 +44,16 @@ sub page_id {
       if defined $self->{page_id};
     my $page_id;
     my $query_string = CGI::query_string();
-    if ($query_string =~ /^keywords=(\w+)$/) {
+    $query_string =~ s/%3a/:/gi;
+    if ($query_string =~ /^keywords=([\w\-:]+)$/) {
         $page_id = $1;
     }
     else {
         $page_id = CGI::param('page_id') || 
                    $self->config->top_page;
     }
+    $page_id = '' if $page_id =~ /[^\w\-\:]/;
+    return $page_id || $self->config->top_page;
     return $page_id;
 }
 
@@ -76,10 +66,14 @@ sub AUTOLOAD {
         $self->{$param} = shift(@_);
         return $self;
     }
-    return CGI::param($param) || '';
+    my $value = CGI::param($param) || '';
+    $value =~ s/[^\w\-\:\.\,\|]//g;
+    return $value;
 }
 
 1;
+
+__END__
 
 =head1 NAME 
 

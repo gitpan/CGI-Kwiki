@@ -1,107 +1,23 @@
 package CGI::Kwiki::Slides;
-$VERSION = '0.13';
+$VERSION = '0.14';
 use strict;
 use base 'CGI::Kwiki';
 
 sub process {
     my ($self) = @_;
-    my $page_id = $self->cgi->page_id;
-    my $wiki_text = $self->driver->database->load($page_id);
-    my @slides = split /^-{4,}$/m, $wiki_text;
+    my %vars;
+    my $wiki_text = $self->driver->database->load;
+    my @slides = split "----\n", $wiki_text;
     my $slide_num = $self->cgi->slide_num || 1;
     $slide_num = $#slides if $slide_num >= @slides;
     $slide_num = 1 if $slide_num <= 0;
     my $formatter = CGI::Kwiki::Slides::Formatter->new($self->driver);
-    my $slide = $formatter->process($slides[$slide_num]);
+    $vars{slide} = $formatter->process($slides[$slide_num]);
     my %config = $slides[0] =~ /^#\s*(.*?)\s*: \s*(.*?)\s*$/mg;
-    my $title = $config{title} || "Title Goes Here";
-    <<END;
-<html>
-<head>
-<title>KwikiSlides - $page_id</title>
-<style>
-pre { font-family: courier, monospace; font-weight: bolder }
-li { font-size: 20pt; padding-top: 10 }
-</style>
-<script>
+    $vars{title} = $config{title} || "Title Goes Here";
+    $vars{slide_num} = $slide_num;
 
-function xxx(x) {
-    alert("Value is ->" + x + "<-");
-}
-
-function incrementSlide(i) {
-    var myForm = document.getElementsByTagName("form")[0];
-    var myNum = myForm.getElementsByTagName("input")[0];
-    i = i * 1;
-    myVal = myNum.value * 1;
-    myNum.value = myVal + i;
-    myForm.submit();
-}
-
-function gotoSlide(i) {
-    var myForm = document.getElementsByTagName("form")[0];
-    var myNum = myForm.getElementsByTagName("input")[0];
-    myNum.value = i;
-    myForm.submit();
-}
-
-function nextSlide() {
-    incrementSlide(1);
-}
-
-function prevSlide() {
-    incrementSlide(-1);
-}
-
-function handleKey(e) {
-    var key;
-    if (e == null) {
-        // IE
-        key = event.keyCode;
-    } 
-    else {
-        // Mozilla
-        if (e.altKey || e.ctrlKey) {
-            return true;
-        }
-        key = e.which;
-    }
-    switch(key) {
-        case 8: prevSlide(); break;
-        case 13: nextSlide(); break;
-        case 32: nextSlide(); break;
-        case 49: gotoSlide(1); break;
-        case 113: window.close(); break;
-        default: //xxx(e.which)
-    }
-}
-
-document.onkeypress=handleKey;
-document.onclick=nextSlide;
-document.ondblclick=prevSlide;
-
-</script>
-</head>
-<body>
-<table width="100%" border="0" cellpadding="5" cellspacing="0">
-<tr bgcolor="#E0E0FF"><td colspan="3" align="center" valign="middle">
-<h4>$title</h4>
-<tr>
-<td width="5%">
-&nbsp;
-<td width="90%">
-$slide
-<td width="5%">
-&nbsp;
-</table>
-<form method="POST" action="index.cgi">
-<input type="hidden" name="slide_num" value="$slide_num">
-<input type="hidden" name="action" value="slides">
-<input type="hidden" name="page_id" value="$page_id">
-</form>
-</body>
-</html>
-END
+    return $self->driver->template->process('slide_page', %vars);
 }
 
 package CGI::Kwiki::Slides::Formatter;
@@ -120,6 +36,7 @@ sub process_order {
     );
 }
 
+# XXX - Use Stylesheet
 sub code_postformat {
     my ($self, $text) = @_;
     return <<END;
@@ -132,6 +49,8 @@ END
 }
 
 1;
+
+__END__
 
 =head1 NAME 
 

@@ -1,10 +1,79 @@
 package CGI::Kwiki;
-$VERSION = '0.13';
+$VERSION = '0.14';
 @EXPORT = qw(attribute);
 use strict;
 use base 'Exporter';
-use CGI::Carp qw(fatalsToBrowser);
+use CGI qw(-no_debug);
 
+# All classes defined by CGI::Kwiki
+sub classes {
+    qw(
+        new
+        config
+        config_yaml
+        driver
+        cgi
+        cookie
+        database
+        metadata
+        display
+        edit
+        formatter
+        template
+        search
+        changes
+        prefs
+        pages
+        slides
+        javascript
+        style
+        scripts
+    )
+}
+
+# Traditional CGI runner
+sub run_cgi {
+    eval "use CGI::Carp qw(fatalsToBrowser)";
+    die $@ if $@;
+    my $driver = load_driver();
+    $CGI::Kwiki::user_name = CGI->remote_host();
+    my $html = $driver->drive;
+    if (ref $html) {
+        print CGI::redirect($html->{redirect});
+    }
+    else {
+        print $driver->cookie->header, $html;
+    }
+}
+
+# Speedy mod_perl runner
+sub handler {
+    my ($r) = @_;
+    my $base_directory = $r->location;
+    chdir($base_directory) 
+      or die "Can't chdir to '$base_directory'\n";
+    eval "use Apache::Constants qw(OK REDIRECT)";
+    die $@ if $@;
+
+    my $driver = load_driver();
+    $CGI::Kwiki::user_name = 
+      $r->get_remote_host || $r->connection->remote_ip;
+    my $html = $driver->drive;
+    if (ref $html) {
+        $r->method('GET');
+        $r->headers_in->unset('Content-length');
+        $r->header_out('Location' => $html->{redirect});
+        $r->status(&REDIRECT);
+        $r->send_http_header;
+    }
+    else {
+        $r->print($driver->cookie->header, $html);
+        $r->status(&OK);
+    }
+    return;
+}
+
+# A generic class attribute set/get method generator
 sub attribute {
     my ($attribute) = @_;
     my $pkg = caller;
@@ -18,11 +87,13 @@ sub attribute {
       };
 }
 
+# The most basic attributes inherited by almost all classes
 attribute 'driver';
 attribute 'template';
 attribute 'config';
 attribute 'cgi';
 
+# Constructor inherited by most classes
 sub new {
     my ($class, $driver) = @_;
     my $self = bless {}, $class;
@@ -33,21 +104,101 @@ sub new {
     return $self;
 }
 
-sub run_cgi {
+sub load_driver {
     require CGI::Kwiki::Config;
     my $config = CGI::Kwiki::Config->new;
-    my $driver_class = $config->driver_class
-      or die "driver_class not defined in configuration";
+    my $driver_class = $config->driver_class;
     eval qq{ require $driver_class }; die $@ if $@;
-    my $driver = $driver_class->new($config);
-    my $html = $driver->drive;
-    require CGI;
-    if (ref $html) {
-        print CGI::redirect($html->{redirect});
+    $driver_class->new($config);
+}
+
+# I run a development Kwiki in the mykwiki/ subdirectory of CGI-Kwiki's
+# development directory. I edit all the data files and templates in
+# there, and then I use this rebuild method to pack them into the DATA
+# sections of their respective modules.
+sub rebuild {
+    my $filename = $0;
+    my $module = $filename;
+    $module =~ s/.*lib\/(?=CGI)//;
+    $module =~ s/\.pm$//;
+    $module =~ s/\//::/g;
+    my $self = $module->new(load_driver);
+    my $data = '';
+    for my $file (sort glob('mykwiki/' . $self->directory . '/*')) {
+        my $label = $file;
+        $label =~ s/.*\///;
+        $label =~ s/\.\w+$//;
+        $data .= "__${label}__\n";
+        open FILE, $file or die $!;
+        $data .= do {local $/; <FILE>};
+        close FILE;
     }
-    else {
-        print $driver->cookie->header, $html;
+    $data =~ s/^=/^=/gm;
+    open MODULE, $filename
+      or die $!;
+    my $module_text = do {local $/;<MODULE>};
+    close MODULE;
+    unless ($module_text =~ /^(.*__DATA__\n.*=cut\n\n)/s) {
+        die "Can't parse $filename\n";
     }
+    $module_text = $1 . $data;
+    open MODULE, "> $filename"
+      or die "Can't open $filename of output:\n$!";
+    print MODULE $module_text;
+    close MODULE;
+    print "$filename updated\n";
+    exit 0;
+}
+
+# Support for unpacking the DATA files attached to many CGI::Kwiki classes
+sub create_files {
+    my ($self) = @_;
+    my $directory = $self->directory;
+    umask 0000;
+    mkdir($directory, 0777)
+      if $directory and not -d $directory;
+    my $package = ref($self);
+    my @files = split /^__(\w+)__\n/m, $self->data;
+    die $@ if $@;
+    shift @files;
+    my %files = @files;
+    for my $file (keys %files) {
+        my $directory = $self->directory($file);
+        my $suffix = $self->suffix($file);
+        my $name = $self->name($file);
+        my $file_path = "$directory/$name$suffix";
+        $self->create_file($file_path, $self->render_template($files{$file}));
+    }
+}
+
+sub create_file {
+    my ($self, $file_path, $content) = @_;
+    open FILE, "> $file_path"
+      or die "Can't open $file_path for output:\n$!";
+    print FILE $content;
+    close FILE;
+    $self->perms($file_path);
+}
+
+sub directory { '' }
+sub suffix { '' }
+sub name { $_[1] }
+sub render_template { $_[1] }
+sub perms {}
+sub data {
+    my ($self) = @_;
+    my $package = ref($self);
+    local $/;
+    my $data = eval "package $package; <DATA>";
+    die $@ if $@;
+    return $data;
+}
+
+sub render {
+    my ($self, $template, %v) = @_;
+    $template =~ 
+      s/(\[%\s+(\w+)\s+%\]\n?)/${\(defined $v{$2} ? $v{$2} : $1)}/g;
+    return $template;
 }
 
 1;
@@ -65,6 +216,12 @@ CGI::Kwiki - A Quickie Wiki that's not too Tricky
     > kwiki-install
 
     Kwiki software installed! Point your browser at this location.
+
+=head1 KWIK START
+
+The Offficial Kwiki Home is at http://www.kwiki.org. This site is a
+Kwiki itself. It contains much more information about Kwiki than the
+distributed docs.
 
 =head1 DESCRIPTION
 
@@ -94,17 +251,14 @@ CGI::Kwiki will come with some fancy addons not found in most wiki
 implementations. This comes with the promise that they will not
 interfere with the sheer simplicity of the default kwiki interface.
 
-Check back from time to time to see what hot features have been added.
+Check http://http://www.kwiki.org/index.cgi?KwikiFeatures from time to
+time to see what hot features have been added.
 
 =head2 Kwiki Slide Show
 
 You can create an entire PowerPoint-like slideshow, in a single kwiki
 page. There is Javascript magic for advancing slides, etc. See the
 sample page KwikiSlideShow.
-
-=head2 Kwiki Blog
-
-Coming soon. 
 
 =head1 EXTENDING
 
@@ -117,16 +271,24 @@ The best way to describe this is with an example. Start with the config
 file. The default config file is called C<config.yaml>. It contains a
 set of lines like this:
 
-    config_class:    CGI::Kwiki::Config
-    driver_class:    CGI::Kwiki::Driver
-    cgi_class:       CGI::Kwiki::CGI
-    database_class:  CGI::Kwiki::Database
-    display_class:   CGI::Kwiki::Display
-    edit_class:      CGI::Kwiki::Edit
-    formatter_class: CGI::Kwiki::Formatter
-    template_class:  CGI::Kwiki::Template
-    search_class:    CGI::Kwiki::Search
-    prefs_class:     CGI::Kwiki::Prefs
+    config_class:      CGI::Kwiki::Config
+    driver_class:      CGI::Kwiki::Driver
+    cgi_class:         CGI::Kwiki::CGI
+    cookie_class:      CGI::Kwiki::Cookie
+    database_class:    CGI::Kwiki::Database
+    metadata_class:    CGI::Kwiki::Metadata
+    display_class:     CGI::Kwiki::Display
+    edit_class:        CGI::Kwiki::Edit
+    formatter_class:   CGI::Kwiki::Formatter
+    template_class:    CGI::Kwiki::Template
+    search_class:      CGI::Kwiki::Search
+    changes_class:     CGI::Kwiki::Changes
+    prefs_class:       CGI::Kwiki::Prefs
+    pages_class:       CGI::Kwiki::Pages
+    slides_class:      CGI::Kwiki::Slides
+    javascript_class:  CGI::Kwiki::Javascript
+    style_class:       CGI::Kwiki::Style
+    scripts_class:     CGI::Kwiki::Scripts
 
 This is a list of all the classes that make up the kwiki. You can change
 anyone of them to be a class of your own.
@@ -159,12 +321,14 @@ world, just package them up as a distribution and put them on CPAN.
 
 By the way, you can even change the configuration file format from the
 YAML default. If you wanted to use say, XML, just call the file
-C<config.xml> and write a module called C<CGI::Kwiki::ConfigParse_xml>.
+C<config.xml> and write a module called C<CGI::Kwiki::Config_xml>.
 
 =head1 SEE ALSO
 
 All of the rest of the documentation for CGI::Kwiki is available within
-your own kwiki installation. Just install a kwiki and follow the links!
+your own Kwiki installation. Just install a Kwiki and follow the links!
+If you're having trouble or just want to see a Kwiki in action, visit
+http://www.kwiki.org first.
 
 =head1 AUTHOR
 

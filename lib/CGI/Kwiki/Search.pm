@@ -1,5 +1,5 @@
 package CGI::Kwiki::Search;
-$VERSION = '0.01';
+$VERSION = '0.14';
 use strict;
 use base 'CGI::Kwiki';
 
@@ -7,20 +7,24 @@ sub process {
     my ($self) = @_;
     my $search = $self->cgi->page_id;
     return
-      $self->template->header .
+      $self->template->process(
+          'display_header',
+          $self->template->display_vars,
+      ) .
       $self->search .
-      $self->template->footer;
+      $self->template->process('basic_footer');
 }
 
 sub search {
     my ($self) = @_;
     my $search = $self->cgi->search;
     # Detaint query string
-    $search =~ s/[^\w\ \-\.\^\$\*\|]//g;
+    $search =~ s/[^\w\ \-\.\^\$\*\|\:]//g;
     my @results = `grep -lir '$search' database`;
-    my $result = '<h2>' . @results . " pages found:</h2>\n";
+    my $result = '<h2>' . @results . 
+                 " pages found containing '$search':</h2>\n";
     for my $page_id (sort @results) {
-        $page_id =~ s/.*?(\w+)\n/$1/;
+        $page_id =~ s/.*?([\w-:]+)\n/$1/;
         $result .= qq{<a href="?$page_id">$page_id</a><br>\n};
     }
     return $result;

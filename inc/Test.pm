@@ -1,3 +1,4 @@
+#line 1 "inc/Test.pm - /usr/lang/perl/5.8.0/lib/5.8.0/Test.pm"
 package Test;
 
 require 5.004;
@@ -36,6 +37,8 @@ $TESTERR = *STDERR{IO};
 $ENV{REGRESSION_TEST} = $0;
 
 
+#line 117
+
 sub plan {
     croak "Test::plan(%args): odd number of arguments" if @_ & 1;
     croak "Test::plan(): should not be called more than once" if $planned;
@@ -70,10 +73,14 @@ sub plan {
 }
 
 
+#line 163
+
 sub _to_value {
     my ($v) = @_;
     return (ref $v or '') eq 'CODE' ? $v->() : $v;
 }
+
+#line 232
 
 sub ok ($;$$) {
     croak "ok: plan before you test!" if !$planned;
@@ -191,6 +198,8 @@ sub skip ($;$$$) {
     }
 }
 
+#line 352
+
 END {
     $ONFAIL->(\@FAILDETAIL) if @FAILDETAIL && $ONFAIL;
 }
@@ -198,3 +207,4 @@ END {
 1;
 __END__
 
+#line 469

@@ -1,8 +1,7 @@
 package CGI::Kwiki::Formatter;
-$VERSION = '0.13';
+$VERSION = '0.14';
 use strict;
 use base 'CGI::Kwiki';
-use CGI();
 
 sub process_order {
     return qw(
@@ -12,7 +11,9 @@ sub process_order {
         lists comment horizontal_line
         paragraph 
         named_http_link no_http_link http_link
-        no_wiki_link wiki_link force_wiki_link
+        no_mailto_link mailto_link
+        no_wiki_link force_wiki_link wiki_link
+        inline
         bold italic underscore
     );
 }
@@ -60,17 +61,9 @@ sub combine_chunks {
 }
 
 sub split_method {
-    my ($self, $text, $regexp, $method, $mutable) = @_;
-    $mutable ||= 0;
-    my $switch = 0;
-    return map {
-        if ($switch++ % 2) {
-            my $result = $self->$method($_);
-            $_ = $mutable ? $result : \ $result;
-        }
-        $_;
-    }
-    split $regexp, $text;
+    my ($self, $text, $regexp, $method) = @_;
+    my $i = 0;
+    map {$i++ % 2 ? \ $self->$method($_) : $_} split $regexp, $text;
 }
 
 sub function {
@@ -95,31 +88,11 @@ sub SLIDESHOW_SELECTOR {
     my ($self) = @_;
     my $page_id = $self->cgi->page_id;
     my $html = <<END;
-<script>
-function startSlides() {
-    var myForm = document.getElementsByTagName("form")[1];
-    var mySize = myForm.getElementsByTagName("select")[0];
-    var myPage = myForm.getElementsByTagName("input")[2];
-    var width, height;
-    switch(mySize.value) {
-        case "640x480": width = "640"; height = "480"; break;
-        case "800x600": width = "800"; height = "600"; break;
-        case "1024x768": width = "1024"; height = "768"; break;
-        case "1280x1024": width = "1280"; height = "1024"; break;
-        case "1600x1200": width = "1600"; height = "1200"; break;
-        default: width = ""; height = ""
-    }
-    myUrl = "?action=slides&page_id=" + myPage.value;
-    myArgs = "height=" + height + ",width=" + width + ",location=no,menubars=no,scrollbars=yes,toolbars=no,resizable=no,titlebar=no";
-    myTarget = "SlideShow";
-    newWindow = open(myUrl, myTarget, myArgs);
-    newWindow.focus();
-}
-</script>
+<script src="javascript/SlideStart.js"></script>
 <form>
 ${ \ CGI::popup_menu(
          -name => 'size',
-         -values => [qw(640x480 800x600 1024x768 1280x1024 1600x1200)]
+         -values => [qw(640x480 800x600 1024x768 1280x1024 1600x1200 fullscreen)]
      )
  }
 <input type="button" name="button" value="START" onclick="startSlides()">
@@ -235,20 +208,20 @@ sub wiki_link {
 sub force_wiki_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{\[([\w-]+)\]},
+        qr{\[([\w:-]+)\]},
         'wiki_link_format',
     );
 }
 
 sub wiki_link_format {
     my ($self, $text) = @_;
-    return qq{<a href="?$text">$text</a>};
+    return qq{<a href="index.cgi?$text">$text</a>};
 }
 
 sub no_http_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{(!http://\S+?(?=[),.:;]?\s|$))}m,
+        qr{(!https?://\S+?)}m,
         'no_http_link_format',
     );
 }
@@ -262,7 +235,7 @@ sub no_http_link_format {
 sub http_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{(http://\S+?(?=[),.:;]?\s|$))}m,
+        qr{(https?://\S+?(?=[),.:;]?\s|$))}m,
         'http_link_format',
     );
 }
@@ -275,6 +248,34 @@ sub http_link_format {
     else {
         return $self->link_format($text, $text);
     }
+}
+
+sub no_mailto_link {
+    my ($self, $text) = @_;
+    $self->split_method($text,
+        qr{(!\w[\w\-\.]*@\w[\w\-\.]+)}m,
+        'no_mailto_link_format',
+    );
+}
+
+sub no_mailto_link_format {
+    my ($self, $text) = @_;
+    $text =~ s#!##;
+    return $text;
+}
+
+sub mailto_link {
+    my ($self, $text) = @_;
+    $self->split_method($text,
+        qr{(\w[\w\-\.]*@\w[\w\-\.]+)}m,
+        'mailto_link_format',
+    );
+}
+
+sub mailto_link_format {
+    my ($self, $text) = @_;
+    my $dot = ($text =~ s/\.$//) ? '.' : '';
+    qq{<a href="mailto:$text">$text</a>$dot};
 }
 
 sub img_format {
@@ -290,7 +291,7 @@ sub link_format {
 sub named_http_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{(\[.*?http:\S.*?\])},
+        qr{(\[.*?https?:\S.*?\])},
         'named_http_link_format',
     );
 }
@@ -298,33 +299,47 @@ sub named_http_link {
 sub named_http_link_format {
     my ($self, $text) = @_;
     my $link = '';
-    $link = $2 if $text =~ s#^\[(.*)(http://\S+)(.*)\]$#$1$3#;
-    $link = $2 if $text =~ s#^\[(.*)http:(\S+)(.*)\]$#$1$3#;
+    $link = $2 if $text =~ s#^\[(.*)(https?://\S+)(.*)\]$#$1$3#;
+    $link = $2 if $text =~ s#^\[(.*)https?:(\S+)(.*)\]$#$1$3#;
+    $text =~ s/^\s*(.*?)\s*$/$1/;
     return $self->link_format($text, $link);
+}
+
+sub inline {
+    my ($self, $text) = @_;
+    $self->split_method($text,
+        qr{\[=(.*?)\]},
+        'inline_format',
+    );
+}
+
+sub inline_format {
+    my ($self, $text) = @_;
+    "<tt>$text</tt>";
 }
 
 sub bold {
     my ($self, $text) = @_;
-    $text =~ s#(?<!\w)\*([\w<].*?[>\w])\*(?!\w)#<b>$1</b>#g;
+    $text =~ s#(?<!\w)\*(\S.*?\S)\*(?!\w)#<b>$1</b>#g;
     return $text;
 }
 
 sub italic {
     my ($self, $text) = @_;
-    $text =~ s#(?<![\w<])/([\w<].*?[>\w])/(?!\w)#<em>$1</em>#g;
+    $text =~ s#(?<![\w<])/(\S.*?\S)/(?!\w)#<em>$1</em>#g;
     return $text;
 }
 
 sub underscore {
     my ($self, $text) = @_;
-    $text =~ s#(?<!\w)_([\w<].*?[>\w])_(?!\w)#<u>$1</u>#g;
+    $text =~ s#(?<!\w)_(\S.*?\S)_(?!\w)#<u>$1</u>#g;
     return $text;
 }
 
 sub code {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{(^ +[^ \n].*?\n)(?=[^ \n]|$)}ms,
+        qr{(^ +[^ \n].*?\n)(?-ms:(?=[^ \n]|$))}ms,
         'code_format',
     );
 }
@@ -336,11 +351,7 @@ sub code_format {
 
 sub code_preformat {
     my ($self, $text) = @_;
-    my @indents = $text =~ /^( +)[^ \n]/gm;
-    my $indent = 10000;
-    for (@indents) {
-        $indent = length($_) if length($_) < $indent;
-    }
+    my ($indent) = sort { $a <=> $b } map { length } $text =~ /^( *)\S/mg;
     $text =~ s/^ {$indent}//gm;
     return $self->escape_html($text);
 }
@@ -417,7 +428,9 @@ sub paragraph {
 
 sub paragraph_format {
     my ($self, $text) = @_;
-    return "<p>\n$_\n</p>\n";
+    return '' if $text =~ /^[\s\n]*$/;
+    return $text if $text =~ /^<(o|u)l>/i;
+    return "<p>\n$text\n</p>\n";
 }
 
 sub horizontal_line {
@@ -487,6 +500,8 @@ sub header_3_format {
 }
 
 1;
+
+__END__
 
 =head1 NAME 
 

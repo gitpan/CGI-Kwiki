@@ -1,5 +1,5 @@
 package CGI::Kwiki::Display;
-$VERSION = '0.12';
+$VERSION = '0.14';
 use strict;
 use base 'CGI::Kwiki';
 
@@ -11,9 +11,13 @@ sub process {
     my $wiki_text = $self->driver->database->load;
     my $formatted = $self->driver->formatter->process($wiki_text);
     return
-      $self->template->header .
-      $self->template->display_body($formatted) .
-      $self->template->display_footer;
+      $self->template->process('display_header',
+          $self->template->display_vars,
+      ) .
+      $self->template->process('display_body',
+          display => $formatted
+      ) .
+      $self->template->process('display_footer');
 }
 
 sub edit {
@@ -29,6 +33,8 @@ sub changes {
 }
 
 1;
+
+__END__
 
 =head1 NAME 
 

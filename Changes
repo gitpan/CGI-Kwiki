@@ -1,6 +1,23 @@
 # Change log for CGI::Kwiki
 
 ---
+version: 0.14
+date:    Thu May 22 11:47:48 PDT 2003
+changes:
+  - Works with mod_perl.
+  - Preferences works.
+  - RecentChanges shows who last editted page.
+  - Almost all non-perl content is now written to appropriate files.
+    Javascript, CSS etc. Much easier to maintain and extend now.
+  - Support mailto links and inline code.
+  - Fixed KwikiSlideShow bug in IE.
+  - https links added. Thanks to GregSchueler.
+  - ':' added to charset for page names. Suggested by JamesFitzGibbon.
+  - Javascript fix reported by Mike Arms.
+  - Security hole in CGI params fixed. Reported by TimSweetman.
+  - Emacs artifact bug fix by HeikkiLehvaslaiho.
+  - Cleaned up unneeded <p> tags. Reported by HolgerSchurig
+---
 version: 0.13
 date:    Tue May 13 11:48:40 PDT 2003
 changes:

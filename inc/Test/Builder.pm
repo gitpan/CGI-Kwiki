@@ -1,3 +1,4 @@
+#line 1 "inc/Test/Builder.pm - /usr/lang/perl/5.8.0/lib/5.8.0/Test/Builder.pm"
 package Test::Builder;
 
 use 5.004;
@@ -37,12 +38,16 @@ BEGIN {
 }
 
 
+#line 95
+
 my $Test;
 sub new {
     my($class) = shift;
     $Test ||= bless ['Move along, nothing to see here'], $class;
     return $Test;
 }
+
+#line 121
 
 my $Exported_To;
 sub exported_to {
@@ -53,6 +58,8 @@ sub exported_to {
     }
     return $Exported_To;
 }
+
+#line 144
 
 sub plan {
     my($self, $cmd, $arg) = @_;
@@ -91,6 +98,8 @@ sub plan {
     return 1;
 }
 
+#line 191
+
 my $Expected_Tests = 0;
 sub expected_tests {
     my($self, $max) = @_;
@@ -105,11 +114,15 @@ sub expected_tests {
 }
 
 
+#line 213
+
 my($No_Plan) = 0;
 sub no_plan {
     $No_Plan    = 1;
     $Have_Plan  = 1;
 }
+
+#line 228
 
 my $Skip_All = 0;
 sub skip_all {
@@ -124,6 +137,8 @@ sub skip_all {
     $self->_print($out) unless $self->no_header;
     exit(0);
 }
+
+#line 262
 
 sub ok {
     my($self, $test, $name) = @_;
@@ -178,6 +193,8 @@ ERR
 
     return $test ? 1 : 0;
 }
+
+#line 332
 
 sub is_eq {
     my($self, $got, $expect, $name) = @_;
@@ -237,6 +254,8 @@ DIAGNOSTIC
 
 }    
 
+#line 406
+
 sub isnt_eq {
     my($self, $got, $dont_expect, $name) = @_;
     local $Level = $Level + 1;
@@ -270,6 +289,8 @@ sub isnt_num {
 }
 
 
+#line 458
+
 sub like {
     my($self, $this, $regex, $name) = @_;
 
@@ -283,6 +304,9 @@ sub unlike {
     local $Level = $Level + 1;
     $self->_regex_ok($this, $regex, '!~', $name);
 }
+
+#line 499
+
 
 sub maybe_regex {
 	my ($self, $regex) = @_;
@@ -330,6 +354,8 @@ DIAGNOSTIC
     return $ok;
 }
 
+#line 556
+
 sub cmp_ok {
     my($self, $got, $type, $expect, $name) = @_;
 
@@ -366,12 +392,16 @@ sub _cmp_diag {
 DIAGNOSTIC
 }
 
+#line 604
+
 sub BAILOUT {
     my($self, $reason) = @_;
 
     $self->_print("Bail out!  $reason");
     exit 255;
 }
+
+#line 620
 
 sub skip {
     my($self, $why) = @_;
@@ -397,6 +427,8 @@ sub skip {
 }
 
 
+#line 656
+
 sub todo_skip {
     my($self, $why) = @_;
     $why ||= '';
@@ -421,6 +453,8 @@ sub todo_skip {
 }
 
 
+#line 721
+
 sub level {
     my($self, $level) = @_;
 
@@ -433,6 +467,8 @@ sub level {
 $CLASS->level(1);
 
 
+#line 758
+
 my $Use_Nums = 1;
 sub use_numbers {
     my($self, $use_nums) = @_;
@@ -442,6 +478,8 @@ sub use_numbers {
     }
     return $Use_Nums;
 }
+
+#line 785
 
 my($No_Header, $No_Ending) = (0,0);
 sub no_header {
@@ -462,6 +500,8 @@ sub no_ending {
     return $No_Ending;
 }
 
+
+#line 840
 
 sub diag {
     my($self, @msgs) = @_;
@@ -486,6 +526,8 @@ sub diag {
     return 0;
 }
 
+#line 875
+
 sub _print {
     my($self, @msgs) = @_;
 
@@ -507,6 +549,8 @@ sub _print {
     print $fh @msgs;
 }
 
+
+#line 926
 
 my($Out_FH, $Fail_FH, $Todo_FH);
 sub output {
@@ -578,6 +622,8 @@ sub _autoflush {
 }
 
 
+#line 1014
+
 sub current_test {
     my($self, $num) = @_;
 
@@ -600,11 +646,15 @@ sub current_test {
 }
 
 
+#line 1047
+
 sub summary {
     my($self) = shift;
 
     return @Test_Results;
 }
+
+#line 1087
 
 sub todo {
     my($self, $pack) = @_;
@@ -616,6 +666,8 @@ sub todo {
                                      : 0;
 }
 
+#line 1107
+
 sub caller {
     my($self, $height) = @_;
     $height ||= 0;
@@ -623,6 +675,10 @@ sub caller {
     my @caller = CORE::caller($self->level + $height + 1);
     return wantarray ? @caller : $caller[0];
 }
+
+#line 1119
+
+#line 1133
 
 #'#
 sub _sanity_check {
@@ -632,6 +688,8 @@ sub _sanity_check {
     _whoa($Curr_Test != @Test_Results,
           'Somehow you got a different number of results than tests ran!');
 }
+
+#line 1152
 
 sub _whoa {
     my($check, $desc) = @_;
@@ -643,12 +701,16 @@ WHOA
     }
 }
 
+#line 1173
+
 sub _my_exit {
     $? = $_[0];
 
     return 1;
 }
 
+
+#line 1186
 
 $SIG{__DIE__} = sub {
     # We don't want to muck with death in an eval, but $^S isn't
@@ -726,5 +788,7 @@ FAIL
 END {
     $Test->_ending if defined $Test and !$Test->no_ending;
 }
+
+#line 1295
 
 1;

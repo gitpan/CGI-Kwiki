@@ -8,6 +8,11 @@ SYNOPSIS
 
         Kwiki software installed! Point your browser at this location.
 
+KWIK START
+    The Offficial Kwiki Home is at http://www.kwiki.org. This site is a
+    Kwiki itself. It contains much more information about Kwiki than the
+    distributed docs.
+
 DESCRIPTION
     A Wiki is a website that allows its users to add pages, and edit any
     existing pages. It is one of the most popular forms of web
@@ -34,15 +39,13 @@ SPECIAL FEATURES
     implementations. This comes with the promise that they will not
     interfere with the sheer simplicity of the default kwiki interface.
 
-    Check back from time to time to see what hot features have been added.
+    Check http://http://www.kwiki.org/index.cgi?KwikiFeatures from time to
+    time to see what hot features have been added.
 
   Kwiki Slide Show
     You can create an entire PowerPoint-like slideshow, in a single kwiki
     page. There is Javascript magic for advancing slides, etc. See the
     sample page KwikiSlideShow.
-
-  Kwiki Blog
-    Coming soon.
 
 EXTENDING
     CGI::Kwiki is completely Object Oriented. You can easily override every
@@ -54,16 +57,24 @@ EXTENDING
     file. The default config file is called "config.yaml". It contains a set
     of lines like this:
 
-        config_class:    CGI::Kwiki::Config
-        driver_class:    CGI::Kwiki::Driver
-        cgi_class:       CGI::Kwiki::CGI
-        database_class:  CGI::Kwiki::Database
-        display_class:   CGI::Kwiki::Display
-        edit_class:      CGI::Kwiki::Edit
-        formatter_class: CGI::Kwiki::Formatter
-        template_class:  CGI::Kwiki::Template
-        search_class:    CGI::Kwiki::Search
-        prefs_class:     CGI::Kwiki::Prefs
+        config_class:      CGI::Kwiki::Config
+        driver_class:      CGI::Kwiki::Driver
+        cgi_class:         CGI::Kwiki::CGI
+        cookie_class:      CGI::Kwiki::Cookie
+        database_class:    CGI::Kwiki::Database
+        metadata_class:    CGI::Kwiki::Metadata
+        display_class:     CGI::Kwiki::Display
+        edit_class:        CGI::Kwiki::Edit
+        formatter_class:   CGI::Kwiki::Formatter
+        template_class:    CGI::Kwiki::Template
+        search_class:      CGI::Kwiki::Search
+        changes_class:     CGI::Kwiki::Changes
+        prefs_class:       CGI::Kwiki::Prefs
+        pages_class:       CGI::Kwiki::Pages
+        slides_class:      CGI::Kwiki::Slides
+        javascript_class:  CGI::Kwiki::Javascript
+        style_class:       CGI::Kwiki::Style
+        scripts_class:     CGI::Kwiki::Scripts
 
     This is a list of all the classes that make up the kwiki. You can change
     anyone of them to be a class of your own.
@@ -96,11 +107,13 @@ EXTENDING
 
     By the way, you can even change the configuration file format from the
     YAML default. If you wanted to use say, XML, just call the file
-    "config.xml" and write a module called "CGI::Kwiki::ConfigParse_xml".
+    "config.xml" and write a module called "CGI::Kwiki::Config_xml".
 
 SEE ALSO
     All of the rest of the documentation for CGI::Kwiki is available within
-    your own kwiki installation. Just install a kwiki and follow the links!
+    your own Kwiki installation. Just install a Kwiki and follow the links!
+    If you're having trouble or just want to see a Kwiki in action, visit
+    http://www.kwiki.org first.
 
 AUTHOR
     Brian Ingerson <INGY@cpan.org>

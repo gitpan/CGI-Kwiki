@@ -1,23 +1,10 @@
 package CGI::Kwiki::Driver;
-$VERSION = '0.12';
+$VERSION = '0.14';
 use strict;
 use CGI::Kwiki;
-use CGI;
 
-attribute 'config';
-attribute 'database';
-attribute 'cgi';
-attribute 'cookie';
-attribute 'formatter';
-attribute 'template';
-attribute 'display';
-attribute 'edit';
-attribute 'search';
-attribute 'changes';
-attribute 'prefs';
-attribute 'preview';
-attribute 'pages';
-attribute 'slides';
+attribute $_
+  for grep {$_ ne 'new'} CGI::Kwiki::classes();
 
 sub new {
     my ($class, $config) = @_;
@@ -47,6 +34,8 @@ sub load_class {
 }
 
 1;
+
+__END__
 
 =head1 NAME 
 
