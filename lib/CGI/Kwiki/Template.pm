@@ -1,5 +1,5 @@
 package CGI::Kwiki::Template;
-$VERSION = '0.14';
+$VERSION = '0.15';
 use strict;
 use base 'CGI::Kwiki';
 
@@ -91,6 +91,7 @@ __display_header__
 <html>
 <head>
 <title>[% title_prefix %]: [% page_id %]</title>
+<link rel="stylesheet" type="text/css" href="css/Display.css">
 <!-- <script src="javascript/Display.js"></script> -->
 </head>
 <body bgcolor=#FFFFFF link=#d06040 vlink=#806040>
@@ -134,8 +135,18 @@ __edit_body__
           style="width:100%" 
           wrap="virtual">[% wiki_text %]</textarea>
 <br><br>
+<table border="0">
+<tr><td align="right">
 <input type="submit" name="button" value="SAVE" />
+<td>
+<input type="text" name="page_id_new" value="[% page_id_new %]" 
+       onfocus="this.value=''" />
+<td>
+[% error_msg %]
+<tr><td align="right">
 <input type="submit" name="button" value="PREVIEW" />
+<td colspan="2">&nbsp;
+</table>
 </form>
 __prefs_body__
 <form>

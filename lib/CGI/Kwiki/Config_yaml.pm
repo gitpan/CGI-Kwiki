@@ -11,13 +11,6 @@ sub new {
 
 sub directory { '.' }
 sub suffix { '.yaml' }
-sub create_file {
-    my $self = shift;
-    my ($file_path) = @_;
-    return if -f $file_path;
-    $self->SUPER::create_file(@_);
-}
-
 sub render_template {
     my ($self, $template) = @_;
     my $config_classes = '';

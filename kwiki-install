@@ -1,10 +1,10 @@
 #!/usr/bin/perl -w
-
-$VERSION = '0.12';
 use strict;
+use vars '$VERSION';
+$VERSION = '0.15';
 
 require CGI::Kwiki::New;
-CGI::Kwiki::New->new->create_kwiki(@ARGV);
+CGI::Kwiki::New->new(@ARGV)->install;
 
 __END__
 

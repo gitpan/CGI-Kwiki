@@ -23,7 +23,11 @@ sub header {
 
 sub create{
     my ($self) = @_;
-    return CGI::cookie('prefs', $self->prefs);
+    return CGI::cookie(
+        -name => 'prefs', 
+        -value => $self->prefs,
+        -expires => '+5y',
+    );
 }
 
 sub fetch {

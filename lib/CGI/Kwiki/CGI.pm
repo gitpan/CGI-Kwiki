@@ -1,18 +1,21 @@
 package CGI::Kwiki::CGI;
-$VERSION = '0.14';
+$VERSION = '0.15';
 use strict;
 use base 'CGI::Kwiki';
+use CGI::Kwiki ':char_classes';
 
 sub all {
     my ($self) = @_;
     return (
         CGI::Vars(), 
         page_id => $self->page_id,
+        map { ($_, $self->{$_}) } 
+        grep { not /^(cgi|config|driver)$/ } keys %$self
     );
 }
 
 sub wiki_text {
-    my ($self) = shift(@_);
+    my ($self) = shift;
     if (not defined $self->{wiki_text}) {
         $self->{wiki_text} = CGI::param('wiki_text');
         $self->{wiki_text} =~ s/\015\012/\n/g;
@@ -24,35 +27,35 @@ sub wiki_text {
 }
 
 sub action {
-    my ($self) = shift(@_);
+    my ($self) = shift;
     if (@_) {
-        $self->{action} = shift(@_);
+        $self->{action} = shift;
         return $self;
     }
     my $action = CGI::param('action') || '';
-    $action = '' if $action =~ /[^\w]/;
+    $action = '' if $action =~ /[^$WORD]/;
     return $action || 'display';
 }
 
 sub page_id {
-    my ($self) = shift(@_);
+    my ($self) = shift;
     if (@_) {
-        $self->{page_id} = shift(@_);
+        $self->{page_id} = shift;
         return $self;
     }
     return $self->{page_id} 
       if defined $self->{page_id};
     my $page_id;
     my $query_string = CGI::query_string();
-    $query_string =~ s/%3a/:/gi;
-    if ($query_string =~ /^keywords=([\w\-:]+)$/) {
+    $query_string =~ s/%([0-9a-fA-F]{2})/pack("H*", $1)/ge;
+    if ($query_string =~ /^keywords=([$ALPHANUM\-:]+)$/) {
         $page_id = $1;
     }
     else {
         $page_id = CGI::param('page_id') || 
                    $self->config->top_page;
     }
-    $page_id = '' if $page_id =~ /[^\w\-\:]/;
+    $page_id = '' if $page_id =~ /[^$ALPHANUM\-\:]/;
     return $page_id || $self->config->top_page;
     return $page_id;
 }
@@ -61,13 +64,13 @@ use vars qw($AUTOLOAD);
 sub AUTOLOAD {
     my $param = $AUTOLOAD;
     $param =~ s/.*://;
-    my ($self) = shift(@_);
+    my ($self) = shift;
     if (@_) {
-        $self->{$param} = shift(@_);
+        $self->{$param} = shift;
         return $self;
     }
     my $value = CGI::param($param) || '';
-    $value =~ s/[^\w\-\:\.\,\|]//g;
+    $value =~ s/[^$WORD\-\:\.\,\|\ ]//g;
     return $value;
 }
 

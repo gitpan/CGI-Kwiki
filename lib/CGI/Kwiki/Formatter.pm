@@ -1,19 +1,21 @@
 package CGI::Kwiki::Formatter;
-$VERSION = '0.14';
+$VERSION = '0.15';
 use strict;
 use base 'CGI::Kwiki';
+use CGI::Kwiki qw(:char_classes);
 
 sub process_order {
     return qw(
         function
-        table code header_1 header_2 header_3 
+        table code 
+        header_1 header_2 header_3 header_4 header_5 header_6 
         escape_html
         lists comment horizontal_line
         paragraph 
         named_http_link no_http_link http_link
         no_mailto_link mailto_link
         no_wiki_link force_wiki_link wiki_link
-        inline
+        inline version
         bold italic underscore
     );
 }
@@ -68,20 +70,18 @@ sub split_method {
 
 sub function {
     my ($self, $text) = @_;
-    my $switch = 0;
-    return map {
-        my @return = ($_);
-        if ($switch++ % 2) {
-            s#%%(.*?)%%#$1#;
-            my ($method, @args) = split;
-            @return = ();
-            if ($self->can($method)) {
-                @return = $self->$method(@args);
-            }
-        }
-        @return
-    }
-    split m#(^%%[A-Z_]+\b.*?%%$)#m, $text;
+    $self->split_method($text,
+        qr{\[\&([A-Z_]+\b.*?)\]},
+        'function_format',
+    );
+}
+
+sub function_format {
+    my ($self, $text) = @_;
+    my ($method, @args) = split;
+    $self->can($method) 
+      ? $self->$method(@args)
+      : $text;
 }
 
 sub SLIDESHOW_SELECTOR {
@@ -100,7 +100,7 @@ ${ \ CGI::popup_menu(
 <input type="hidden" name="page_id" value="$page_id">
 </form>
 END
-    \ $html;
+    $html;
 }
 
 sub TRANSCLUDE_HTTP_BODY {
@@ -186,21 +186,20 @@ sub format_table {
 sub no_wiki_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{(![A-Z][a-z]+[A-Z]\w+)},
+        qr{!([$UPPER](?=[$ALPHANUM]*[$UPPER])(?=[$ALPHANUM]*[$LOWER])[$ALPHANUM]+)},
         'no_wiki_link_format',
     );
 }
 
 sub no_wiki_link_format {
     my ($self, $text) = @_;
-    $text =~ s#!##;
     return $text;
 }
 
 sub wiki_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{([A-Z][a-z]+[A-Z]\w+)},
+        qr{([$UPPER](?=[$ALPHANUM]*[$UPPER])(?=[$ALPHANUM]*[$LOWER])[$ALPHANUM]+)},
         'wiki_link_format',
     );
 }
@@ -208,20 +207,24 @@ sub wiki_link {
 sub force_wiki_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{\[([\w:-]+)\]},
+        qr{\[([$ALPHANUM\-:]+)\]},
         'wiki_link_format',
     );
 }
 
 sub wiki_link_format {
     my ($self, $text) = @_;
-    return qq{<a href="index.cgi?$text">$text</a>};
+    my $wiki_link = qq{<a href="index.cgi?$text">$text</a>};
+    unless ($self->driver->database->exists($text)) {
+        $wiki_link =~ s/<a/<a class="empty"/;
+    }
+    return $wiki_link;
 }
 
 sub no_http_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{(!https?://\S+?)}m,
+        qr{(!(?:https?|ftp|irc):\S+?)}m,
         'no_http_link_format',
     );
 }
@@ -235,25 +238,25 @@ sub no_http_link_format {
 sub http_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{(https?://\S+?(?=[),.:;]?\s|$))}m,
+        qr{((?:https?|ftp|irc):\S+?(?=[),.:;]?\s|$))}m,
         'http_link_format',
     );
 }
 
 sub http_link_format {
     my ($self, $text) = @_;
-    if ($text =~ /\.(jpg|gif|jpeg|png)/) {
+    if ($text =~ /^http.*\.(jpg|gif|jpeg|png)$/) {
         return $self->img_format($text);
     }
     else {
-        return $self->link_format($text, $text);
+        return $self->link_format($text);
     }
 }
 
 sub no_mailto_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{(!\w[\w\-\.]*@\w[\w\-\.]+)}m,
+        qr{(![$ALPHANUM][$WORD\-\.]*@[$WORD][$WORD\-\.]+)}m,
         'no_mailto_link_format',
     );
 }
@@ -267,7 +270,7 @@ sub no_mailto_link_format {
 sub mailto_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{(\w[\w\-\.]*@\w[\w\-\.]+)}m,
+        qr{([$ALPHANUM][$WORD\-\.]*@[$WORD][$WORD\-\.]+)}m,
         'mailto_link_format',
     );
 }
@@ -284,25 +287,34 @@ sub img_format {
 }
 
 sub link_format {
-    my ($self, $text, $url) = @_;
+    my ($self, $text) = @_;
+    $text =~ s/(^\s*|\s+(?=\s)|\s$)//g;
+    my $url = $text;
+    $url = $1 if $text =~ s/(.*?) +//;
+    $url =~ s/https?:(?!\/\/)//;
     return qq{<a href="$url">$text</a>};
 }
 
 sub named_http_link {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{(\[.*?https?:\S.*?\])},
+        qr{\[(.*?(?:https?|ftp|irc):\S.*?)\]},
         'named_http_link_format',
     );
 }
 
 sub named_http_link_format {
     my ($self, $text) = @_;
-    my $link = '';
-    $link = $2 if $text =~ s#^\[(.*)(https?://\S+)(.*)\]$#$1$3#;
-    $link = $2 if $text =~ s#^\[(.*)https?:(\S+)(.*)\]$#$1$3#;
-    $text =~ s/^\s*(.*?)\s*$/$1/;
-    return $self->link_format($text, $link);
+    if ($text =~ m#(.*)(?:https?|ftp|irc):(\S+)(.*)#) {
+        $text = "$2 $1$3";
+    }
+    return $self->link_format($text);
+}
+
+sub version {
+    my ($self, $text) = @_;
+    $text =~ s#\[\#\.\#\]#$CGI::Kwiki::VERSION#g;
+    return $text;
 }
 
 sub inline {
@@ -320,19 +332,19 @@ sub inline_format {
 
 sub bold {
     my ($self, $text) = @_;
-    $text =~ s#(?<!\w)\*(\S.*?\S)\*(?!\w)#<b>$1</b>#g;
+    $text =~ s#(?<![$WORD])\*(\S.*?\S)\*(?![$WORD])#<b>$1</b>#g;
     return $text;
 }
 
 sub italic {
     my ($self, $text) = @_;
-    $text =~ s#(?<![\w<])/(\S.*?\S)/(?!\w)#<em>$1</em>#g;
+    $text =~ s#(?<![$WORD<])/(\S.*?\S)/(?![$WORD])#<em>$1</em>#g;
     return $text;
 }
 
 sub underscore {
     my ($self, $text) = @_;
-    $text =~ s#(?<!\w)_(\S.*?\S)_(?!\w)#<u>$1</u>#g;
+    $text =~ s#(?<![$WORD])_(\S.*?\S)_(?![$WORD])#<u>$1</u>#g;
     return $text;
 }
 
@@ -449,54 +461,31 @@ sub horizontal_line_format {
 sub comment {
     my ($self, $text) = @_;
     $self->split_method($text,
-        qr{(^\# .*\n)}m,
+        qr{^\# (.*)\n}m,
         'comment_line_format',
     );
 }
 
 sub comment_line_format {
     my ($self, $text) = @_;
-    $text =~ s/\# (.*)/<!-- $1 -->/;
-    return $text;
+    return "<!-- $text -->\n";
 }
 
-sub header_1 {
-    my ($self, $text) = @_;
-    $self->split_method($text,
-        qr{^= (.*) =\n}m,
-        'header_1_format',
-    );
-}
-
-sub header_1_format {
-    my ($self, $text) = @_;
-    return "<h1>$text</h1>\n";
-}
-
-sub header_2 {
-    my ($self, $text) = @_;
-    $self->split_method($text,
-        qr{^== (.*) ==\n}m,
-        'header_2_format',
-    );
-}
-
-sub header_2_format {
-    my ($self, $text) = @_;
-    return "<h2>$text</h2>\n";
-}
-
-sub header_3 {
-    my ($self, $text) = @_;
-    $self->split_method($text,
-        qr{^=== (.*) ===\n}m,
-        'header_3_format',
-    );
-}
-
-sub header_3_format {
-    my ($self, $text) = @_;
-    return "<h3>$text</h3>\n";
+for my $num (1..6) {
+    no strict 'refs';
+    *{"header_$num"} = 
+    sub {
+        my ($self, $text) = @_;
+        $self->split_method($text,
+            qr{^={$num} (.*?)(?: ={$num})?\n}m,
+            "header_${num}_format",
+        );
+    };
+    *{"header_${num}_format"} = 
+    sub {
+        my ($self, $text) = @_;
+        return "<h$num>$text</h$num>\n";
+    };
 }
 
 1;

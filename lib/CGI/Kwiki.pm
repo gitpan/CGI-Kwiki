@@ -1,9 +1,27 @@
 package CGI::Kwiki;
-$VERSION = '0.14';
+$VERSION = '0.15';
 @EXPORT = qw(attribute);
+@CHAR_CLASSES = qw($UPPER $LOWER $ALPHANUM $WORD);
+@EXPORT_OK = (@CHAR_CLASSES);
+%EXPORT_TAGS = (char_classes => [@CHAR_CLASSES]);
+
 use strict;
 use base 'Exporter';
 use CGI qw(-no_debug);
+
+use vars qw($UPPER $LOWER $ALPHANUM $WORD);
+if ($] < 5.008) {
+    $UPPER    = "A-Z\xc0-\xde";
+    $LOWER    = "a-z\xdf-\xff";
+    $ALPHANUM = "A-Za-z0-9\xc0-\xff";
+    $WORD     = "A-Za-z0-9\xc0-\xff_";
+}
+else {
+    $UPPER    = '\p{IsUpper}';
+    $LOWER    = '\p{IsLower}';
+    $ALPHANUM = '\p{IsAlpha}\p{IsDigit}';
+    $WORD     = '\p{IsAlpha}\p{IsDigit}_';
+}
 
 # All classes defined by CGI::Kwiki
 sub classes {
@@ -158,7 +176,7 @@ sub create_files {
     mkdir($directory, 0777)
       if $directory and not -d $directory;
     my $package = ref($self);
-    my @files = split /^__(\w+)__\n/m, $self->data;
+    my @files = split /^__([$WORD]+)__\n/m, $self->data;
     die $@ if $@;
     shift @files;
     my %files = @files;

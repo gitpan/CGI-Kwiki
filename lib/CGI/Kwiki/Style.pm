@@ -35,6 +35,9 @@ See http://www.perl.com/perl/misc/Artistic.html
 
 =cut
 
+__Display__
+a {text-decoration:none}
+a.empty {text-decoration:line-through}
 __Scratch__
 /*
  * Comment

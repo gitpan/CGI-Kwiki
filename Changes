@@ -1,6 +1,22 @@
 # Change log for CGI::Kwiki
 
 ---
+version: 0.15
+date:    Wed May 28 00:24:47 PDT 2003
+changes:
+  - Support unicode character classes in page names
+  - Search searches page names
+  - Search is written in Perl now, instead of grep
+  - Cookies span sessions
+  - Allow ftp:// and irc:// links
+  - Allow to create a new page from an old one
+  - Dead wiki links use <strike>
+  - Stop links from being underlined
+  - Allow Wiki links like KWiki
+  - Support <H4> <H5> and <H6>
+  - Refactored installation and upgrade process
+  - Added [#.#] format for $CGI::Kwiki::VERSION
+---
 version: 0.14
 date:    Thu May 22 11:47:48 PDT 2003
 changes:

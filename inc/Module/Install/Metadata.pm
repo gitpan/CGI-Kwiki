@@ -1,6 +1,6 @@
 #line 1 "inc/Module/Install/Metadata.pm - /usr/lang/perl/5.8.0/lib/site_perl/5.8.0/Module/Install/Metadata.pm"
-# $File: //depot/cpan/Module-Install/lib/Module/Install/Metadata.pm $ $Author: autrijus $
-# $Revision: #17 $ $Change: 1477 $ $DateTime: 2003/05/06 19:58:01 $ vim: expandtab shiftwidth=4
+# $File: //depot/cpan/Module-Install/lib/Module/Install/Metadata.pm $ $Author: iain $
+# $Revision: #18 $ $Change: 1537 $ $DateTime: 2003/05/20 22:50:53 $ vim: expandtab shiftwidth=4
 
 package Module::Install::Metadata;
 use Module::Install::Base; @ISA = qw(Module::Install::Base);
@@ -60,6 +60,26 @@ sub _dump {
     }
 
     return($dump . "private:\n  directory:\n    - inc\ngenerated_by: $package version $version\n");
+}
+
+sub read {
+    my $self = shift;
+    $self->include( 'YAML' );
+    require YAML;
+    my $data = YAML::LoadFile( 'META.yml' );
+    # Call methods explicitly in case user has already set some values.
+    while ( my ($key, $value) = each %$data ) {
+        next unless $self->can( $key );
+        if (ref $value eq 'HASH') {
+            while (my ($module, $version) = each %$value) {
+                $self->$key( $module => $version );
+            }
+        }
+        else {
+            $self->$key( $value );
+        }
+    }
+    return $self;
 }
 
 sub write {

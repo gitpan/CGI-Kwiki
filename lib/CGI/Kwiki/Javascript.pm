@@ -1,5 +1,5 @@
 package CGI::Kwiki::Javascript;
-$VERSION = '0.14';
+$VERSION = '0.15';
 use strict;
 use base 'CGI::Kwiki';
 

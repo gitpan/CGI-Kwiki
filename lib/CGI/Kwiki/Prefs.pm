@@ -22,7 +22,7 @@ sub process {
           error_msg => $self->error_msg,
           user_name => $self->user_name,
       ) .
-      $self->template->process('display_footer');
+      $self->template->process('basic_footer');
 }
 
 sub save {

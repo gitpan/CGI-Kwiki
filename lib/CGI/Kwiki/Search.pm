@@ -2,6 +2,7 @@ package CGI::Kwiki::Search;
 $VERSION = '0.14';
 use strict;
 use base 'CGI::Kwiki';
+use CGI::Kwiki ':char_classes';
 
 sub process {
     my ($self) = @_;
@@ -17,14 +18,26 @@ sub process {
 
 sub search {
     my ($self) = @_;
+    my $database = $self->driver->database;
     my $search = $self->cgi->search;
     # Detaint query string
-    $search =~ s/[^\w\ \-\.\^\$\*\|\:]//g;
-    my @results = `grep -lir '$search' database`;
+    $search =~ s/[^$WORD\ \-\.\^\$\*\|\:]//g;
+    my @pages = $self->driver->database->pages;
+    my @results;
+    for my $page_id (@pages) {
+        if ($page_id =~ m{$search}i) {
+            push @results, $page_id;
+            next;
+        }
+        my $wiki_text = $database->load($page_id);
+        if ($wiki_text =~ m{$search}is) {
+            push @results, $page_id;
+        }
+    }
     my $result = '<h2>' . @results . 
                  " pages found containing '$search':</h2>\n";
     for my $page_id (sort @results) {
-        $page_id =~ s/.*?([\w-:]+)\n/$1/;
+        $page_id =~ s/.*?([$WORD\-:]+)\n/$1/;
         $result .= qq{<a href="?$page_id">$page_id</a><br>\n};
     }
     return $result;

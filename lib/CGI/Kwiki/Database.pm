@@ -1,11 +1,12 @@
 package CGI::Kwiki::Database;
-$VERSION = '0.14';
+$VERSION = '0.15';
 use strict;
 use base 'CGI::Kwiki';
 
 sub exists {
     my ($self, $page_id) = @_;
     $page_id ||= $self->cgi->page_id;
+    return 1 if $page_id eq 'RecentChanges';
     return -f "database/$page_id";
 }
 
@@ -37,6 +38,11 @@ sub store {
     $self->driver->load_class('metadata');
     $self->driver->metadata->set($page_id);
 }
+
+sub pages {
+    map {s/.*[\\\/]//; $_} glob "database/*";
+}
+
 
 1;
 

@@ -1,5 +1,5 @@
 package CGI::Kwiki::Pages;
-$VERSION = '0.14';
+$VERSION = '0.15';
 use strict;
 use base 'CGI::Kwiki';
 
@@ -14,8 +14,10 @@ sub data {
 sub create_file {
     my ($self, $file_path, $content) = @_;
     (my $page_id = $file_path) =~ s!.*/!!;
-    return if $page_id eq 'HomePage' and 
-              $self->driver->database->exists('HomePage');
+    if ($self->driver->database->exists($page_id)) {
+        my $metadata = $self->driver->metadata->get($page_id);
+        return unless $metadata->{edit_by} eq 'kwiki-install';
+    }
     $self->driver->database->store($content, $page_id);
 }
 
@@ -55,6 +57,10 @@ He has a dream to see the communities of all the /agile programming languages/ (
 * [FreePAN http://www.freepan.org]
 * [FIT http://fit.freepan.org]
 * [Moss http://moss.freepan.org]
+
+He can be contacted at:
+* ingy@cpan.org
+* irc://irc.freenode.net/kwiki
 __HomePage__
 *Congratulations*! You've created a new _Kwiki_ website.
 
@@ -64,24 +70,43 @@ Just click the EDIT button below.
 
 You may also want to add a KwikiLogoImage in the config.yaml file. It will appear in the upper lefthand corner of each page.
 ----
-If you need assitance on using a Kwiki first, check out KwikiHelpIndex.
+If you need assistance on using a Kwiki first, check out KwikiHelpIndex.
 __KwikiAbout__
 CGI::Kwiki is simple yet powerful Wiki environment written in Perl as a CPAN module distribribution. It was written by BrianIngerson.
 
-^=== This is CGI::Kwiki Version 0.14 ===
+*This is CGI::Kwiki Version [#.#]* 
 
-* Works with mod_perl.
-* Preferences works.
-* Support for page metadata.
-* RecentChanges shows who last edited page.
-* Almost all non-perl content is now written to appropriate files. Javascript, CSS etc. Much easier to maintain and extend now.
-* Support mailto links and inline code.
-* https links added. Thanks to GregSchueler.
-* ':' added to charset for page names. Suggested by JamesFitzGibbon.
-* Javascript fix reported by MikeArms.
-* Security hole in CGI params fixed. Reported by TimSweetman.
-* Emacs artifact bug fix by HeikkiLehvaslaiho.
-* Cleaned up unneeded <p> tags. Reported by HolgerSchurig
+Changes in this release:
+  - Support unicode character classes in page names
+  - Search searches page names
+  - Search is written in Perl now, instead of grep
+  - Cookies span sessions
+  - Allow ftp:// and irc:// links
+  - Allow to create a new page from an old one
+  - Dead wiki links use <strike>
+  - Stop links from being underlined
+  - Allow Wiki links like KWiki
+  - Support <H4> <H5> and <H6>
+  - Refactored installation and upgrade process
+  - Added [#.#] format for $CGI::Kwiki::VERSION
+
+Changes for version 0.14:
+  - Works with mod_perl.
+  - Preferences works.
+  - Support for page metadata.
+  - RecentChanges shows who last edited page.
+  - Almost all non-perl content is now written to 
+    appropriate files. Javascript, CSS etc. Much easier to
+    maintain and extend now.
+  - Support mailto links and inline code.
+  - https links added. Thanks to GregSchueler.
+  - ':' added to charset for page names. Suggested by 
+    JamesFitzGibbon.
+  - Javascript fix reported by MikeArms.
+  - Security hole in CGI params fixed. Reported by 
+    TimSweetman.
+  - Emacs artifact bug fix by HeikkiLehvaslaiho.
+  - Cleaned up unneeded <p> tags. Reported by HolgerSchurig
 __KwikiBlog__
 *Due next release or two*.
 
@@ -116,6 +141,15 @@ This page describes the wiki markup language used by this kwiki.
 ----
 ^=== Level 3 Heading (H3) ===
   === Level 3 Heading (H3) ===
+----
+^==== Level 4 Heading (H4)
+  ==== Level 4 Heading (H4)
+----
+^===== Level 5 Heading (H5)
+  ===== Level 5 Heading (H5)
+----
+^====== Level 6 Heading (H6)
+  ====== Level 6 Heading (H6)
 ----
 The horizontal lines in this page are made with 4 or more dashes:
   ----
@@ -242,6 +276,7 @@ CGI::Kwiki is simple yet powerful Wiki environment written in Perl as a CPAN mod
 ^=== Kwiki Basics ===
 
 * KwikiInstallation
+* KwikiUpgrading
 * KwikiFeatures
 * KwikiFormattingRules
 * KwikiNavigation
@@ -275,8 +310,6 @@ CGI::Kwiki is simple yet powerful Wiki environment written in Perl as a CPAN mod
 * KwikiScriptsModule
 * KwikiJavascriptModule
 * KwikiSlidesModule
-
-*NOTE*: It is wise not to make local modifications of pages that begin with "Kwiki" as these pages will be replaced when you upgrade the CGI::Kwiki software.
 __KwikiHotKeys__
 *Coming Soon*
 
@@ -312,14 +345,6 @@ Third:
 * Viola! You can set up new Kwikis in seconds.
 ----
 
-^== Upgrading a Kwiki Site ==
-
-After installing the new CGI::Kwiki module, just cd into the old Kwiki directory and reinstall with:
-
-  kwiki-install
-
-----
-
 ^== Apache Config ==
 
 Here's a sample Apache config section that may help.
@@ -336,12 +361,12 @@ Here's a sample Apache config section that may help.
 Adjust to your needs.
 
 ^== See Also: ==
+* KwikiUpgrading
 * KwikiModPerl
 __KwikiKnownBugs__
 See also: KwikiTodo
 
 * No backup system yet
-* Search requires unix 'grep' command
 __KwikiLogoImage__
 A logo image is something like a "coat of arms" for your kwiki. It is very useful for identifying your kwiki, especially from other wiki sites.
 
@@ -404,7 +429,7 @@ __KwikiSlideShow__
 CGI::Kwiki has a !PowerPoint-like slideshow built in. Give it a try.
 
 *Click Here to start the slideshow*:
-%%SLIDESHOW_SELECTOR%%
+[&SLIDESHOW_SELECTOR]
 # title: Intro to Kwiki SlideShow
 ----
 ^== Welcome to the Kwiki Slide Show Example ==
@@ -463,6 +488,22 @@ Add these features:
 * KwikiBlog
 * KwikiFit
 * KwikiPod
+__KwikiUpgrading__
+^== Upgrading a Kwiki Site ==
+
+After installing the new CGI::Kwiki module, just cd into the old Kwiki directory and reinstall with:
+
+  kwiki-install --upgrade
+
+This will upgrade everything except the config file and the changed pages. Other upgrade options are:
+
+  --reinstall  - Upgrade everything including config file.
+  --config     - Upgrade config file. You will lose local settings!
+  --scripts    - Upgrade cgi scripts.
+  --pages      - Upgrade default kwiki pages unless changed by a user.
+  --template   - Upgrade templates.
+  --javascript - Upgrade javascript.
+  --style      - Upgrade css stylesheets.
 __KwikiUserName__
 You should strongly consider entering a username in [Preferences http:index.cgi?action=prefs]. This will allow the kwiki to keep track of who changed what page. The username will show up in the RecentChanges page.
 
